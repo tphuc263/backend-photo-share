@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @Getter
-public class AppUserDetails implements UserDetails, OAuth2User {
+public class AppUserDetails implements UserDetails{
 
     private final Long id;
     private final String email;
@@ -34,28 +34,11 @@ public class AppUserDetails implements UserDetails, OAuth2User {
     public static AppUserDetails buildUserDetails(User user) {
         List<GrantedAuthority> authorities = List.of(
                 new SimpleGrantedAuthority(user.getRole().getName().name()));
-        // Truyền trạng thái active của User vào constructor
         return new AppUserDetails(
                 user.getId(),
                 user.getEmail(),
                 user.getPassword(),
-                user.isActive(), // Sử dụng trạng thái active từ User
-                authorities,
-                null // Không có attributes OAuth2 trong trường hợp này
-        );
-    }
-
-    // Factory method cho đăng nhập OAuth2 (từ User entity và attributes)
-    public static AppUserDetails buildOAuth2UserDetails(User user, Map<String, Object> attributes) {
-        List<GrantedAuthority> authorities = List.of(
-                new SimpleGrantedAuthority(user.getRole().getName().name()));
-        return new AppUserDetails(
-                user.getId(),
-                user.getEmail(),
-                user.getPassword(),
-                user.isActive(),
-                authorities,
-                attributes
+                authorities
         );
     }
 

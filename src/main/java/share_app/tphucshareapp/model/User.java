@@ -15,8 +15,6 @@ public class User {
     @Id
     private String id;
 
-    private boolean active;
-
     @Indexed(unique = true)
     private String username;
 
@@ -26,12 +24,6 @@ public class User {
     private String password;
 
     private UserRole role;
-
-    private String verificationToken;
-    private Instant verificationExpiry;
-
-    private String oauthProvider;
-    private String oauthProviderId;
 
     private String imageUrl;
     private String firstName;
