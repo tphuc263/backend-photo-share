@@ -1,18 +1,21 @@
 package share_app.tphucshareapp.controller;
 
 
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.web.bind.annotation.*;
-import share_app.tphucshareapp.dto.request.auth.RegisterRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import share_app.tphucshareapp.dto.request.auth.LoginRequest;
+import share_app.tphucshareapp.dto.request.auth.LoginResponse;
 import share_app.tphucshareapp.dto.response.ApiResponse;
 import share_app.tphucshareapp.security.jwt.JwtUtils;
-import share_app.tphucshareapp.service.auth.AuthService;
-import share_app.tphucshareapp.utils.CookieUtils;
+import share_app.tphucshareapp.security.userdetails.AppUserDetails;
 
 @RestController
 @RequestMapping("${api.prefix}/auth")
@@ -21,33 +24,27 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
-    private final CookieUtils cookieUtils;
-    private final AuthService authService;
 
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponse<Void>> registerUser(@Valid @RequestBody RegisterRequest request) {
-        authService.registerUser(request);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(null, "Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản"));
-    }
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest request) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(HttpServletResponse response) {
-        cookieUtils.deleteRefreshTokenCookie(response);
-        return ResponseEntity.ok(ApiResponse.success(null, "Đăng xuất thành công"));
-    }
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = jwtUtils.generateToken(authentication);
 
-    @GetMapping("/verify")
-    public ResponseEntity<ApiResponse<Void>> verifyAccount(@RequestParam("token") String token) {
-        boolean verified = authService.verifyAccount(token);
+        AppUserDetails userDetails = (AppUserDetails) authentication.getPrincipal();
 
-        if (verified) {
-            return ResponseEntity.ok(ApiResponse.success(null, "Xác thực tài khoản thành công"));
-        } else {
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("Token không hợp lệ hoặc đã hết hạn"));
-        }
+        LoginResponse loginResponse = new LoginResponse(
+                jwt,
+                userDetails.getId(),
+                userDetails.getUsername(),
+                userDetails.getEmail(),
+                userDetails.getAuthorities().stream()
+                        .map(authority -> authority.getAuthority())
+                        .toList()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(loginResponse, "Đăng nhập thành công"));
     }
 }

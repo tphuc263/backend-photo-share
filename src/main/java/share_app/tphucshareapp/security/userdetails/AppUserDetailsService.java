@@ -15,15 +15,16 @@ public class AppUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException, DisabledException {
-        User user = userRepository.findByEmail(email);
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException, DisabledException {
+        // Tìm user theo username hoặc email
+        User user = userRepository.findByUsername(username);
 
         if (user == null) {
-            throw new UsernameNotFoundException("User not found with email: " + email);
+            user = userRepository.findByEmail(username);
         }
 
-        if (!user.isActive()) {
-            throw new DisabledException("Account is not activated for email: " + email);
+        if (user == null) {
+            throw new UsernameNotFoundException("Không tìm thấy người dùng: " + username);
         }
 
         return AppUserDetails.buildUserDetails(user);

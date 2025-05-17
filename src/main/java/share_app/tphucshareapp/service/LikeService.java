@@ -10,11 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 import share_app.tphucshareapp.dto.request.user.UserBasicInfo;
 import share_app.tphucshareapp.model.Like;
 import share_app.tphucshareapp.model.Photo;
+import share_app.tphucshareapp.model.User;
 import share_app.tphucshareapp.repository.LikeRepository;
 import share_app.tphucshareapp.repository.PhotoRepository;
 import share_app.tphucshareapp.repository.UserRepository;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,21 +27,16 @@ public class LikeService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
 
-    /**
-     * Thích một ảnh
-     */
     @Transactional
     @CacheEvict(value = "photoLikeCount", key = "#photoId")
     public void likePhoto(String photoId, String userId) {
-        // Kiểm tra ảnh có tồn tại
         Photo photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ảnh"));
 
-        // Kiểm tra đã like chưa
         Optional<Like> existingLike = likeRepository.findByPhotoIdAndUserId(photoId, userId);
 
         if (existingLike.isPresent()) {
-            return; // Đã like rồi, không làm gì thêm
+            return;
         }
 
         // Tạo like mới

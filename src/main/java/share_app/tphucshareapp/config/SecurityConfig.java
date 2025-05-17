@@ -1,7 +1,6 @@
 package share_app.tphucshareapp.config;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,19 +14,19 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import share_app.tphucshareapp.security.jwt.AuthTokenFilter;
 import share_app.tphucshareapp.security.jwt.JwtEntryPoint;
-import share_app.tphucshareapp.security.oauth2.OAuth2FailureHandler;
-import share_app.tphucshareapp.security.oauth2.OAuth2SuccessHandler;
-import share_app.tphucshareapp.security.oauth2.OAuth2UserService;
 import share_app.tphucshareapp.security.userdetails.AppUserDetailsService;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-@Slf4j
 public class SecurityConfig {
     @Value("${api.prefix}")
     private String API;
@@ -35,11 +34,7 @@ public class SecurityConfig {
     private final AppUserDetailsService userDetailsService;
     private final JwtEntryPoint authEntryPoint;
     private final AuthTokenFilter authTokenFilter;
-    private final OAuth2UserService oAuth2UserService;
-    private final OAuth2SuccessHandler oAuth2SuccessHandler;
-    private final OAuth2FailureHandler oAuth2FailureHandler;
     private final PasswordEncoder passwordEncoder;
-
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
@@ -74,14 +69,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(API + "/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(securedUrls.toArray(String[]::new)).authenticated()
-                        .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers(API + "/auth/**").permitAll()
                         .anyRequest().permitAll())
-                .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(oAuth2UserService))
-                        .successHandler(oAuth2SuccessHandler)
-                        .failureHandler(oAuth2FailureHandler))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
 

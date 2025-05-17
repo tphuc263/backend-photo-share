@@ -41,7 +41,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             }
         } catch (Exception e) {
             log.error("Lỗi xác thực JWT: {}", e.getMessage());
-            return;
         }
         filterChain.doFilter(request, response);
     }

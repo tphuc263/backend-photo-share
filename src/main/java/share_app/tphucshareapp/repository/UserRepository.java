@@ -10,5 +10,7 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     List<User> findByUsernameContainingOrFirstNameContainingOrLastNameContaining(
             String username, String firstName, String lastName);
+
+    User findByUsername(String username);
 }
 
