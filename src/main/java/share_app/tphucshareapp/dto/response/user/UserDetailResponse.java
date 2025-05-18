@@ -2,6 +2,8 @@ package share_app.tphucshareapp.dto.response.user;
 
 import lombok.Data;
 
+import java.time.Instant;
+
 @Data
 public class UserDetailResponse {
 

@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Data
 @Document(collection = "follows")
 @CompoundIndex(
-        name="follower_following_id",
+        name = "follower_following_id",
         def = "{'followerId': 1, 'followingId': 1}",
         unique = true)
 public class Follow {

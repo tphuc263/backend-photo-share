@@ -31,7 +31,7 @@ public class JwtUtils {
     }
 
 
-    public String generateToken(Authentication authentication) {
+    public String generateAccessToken(Authentication authentication) {
         AppUserDetails userPrincipal = (AppUserDetails) authentication.getPrincipal();
 
         List<String> roles = userPrincipal.getAuthorities()

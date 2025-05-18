@@ -8,13 +8,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 
 @Data
-@Document(collection="tags")
+@Document(collection = "tags")
 public class Tag {
 
     @Id
     private String id;
 
-    @Indexed(unique=true)
+    @Indexed(unique = true)
     private String name;
     private Instant createdAt;
 }

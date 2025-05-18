@@ -20,11 +20,12 @@ public class ApiResponse<T> {
     }
 
     /*
-    * Factory method
-    */
+     * Factory method
+     */
     public static <T> ApiResponse<T> success(T data, String message) {
         return new ApiResponse<>(data, message);
     }
+
     public static ApiResponse<Void> error(String message) {
         return new ApiResponse<>(message);
     }

@@ -8,7 +8,6 @@ import share_app.tphucshareapp.model.User;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 @Getter
 public class AppUserDetails implements UserDetails {
