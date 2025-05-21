@@ -5,6 +5,6 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class LikeService {
+public class LikeService implements ILikeService {
 
 }

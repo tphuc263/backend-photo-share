@@ -6,6 +6,5 @@ import share_app.tphucshareapp.dto.request.auth.RegisterRequest;
 
 public interface IAuthService {
     LoginResponse login(LoginRequest request);
-
     void register(RegisterRequest request);
 }

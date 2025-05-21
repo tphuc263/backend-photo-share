@@ -5,6 +5,6 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class FollowService {
+public class FollowService implements IFollowService {
 
 }
