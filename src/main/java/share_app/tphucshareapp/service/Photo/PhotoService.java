@@ -1,4 +1,4 @@
-package share_app.tphucshareapp.service;
+package share_app.tphucshareapp.service.Photo;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
