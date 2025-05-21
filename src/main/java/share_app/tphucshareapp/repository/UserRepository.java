@@ -5,5 +5,7 @@ import share_app.tphucshareapp.model.User;
 
 public interface UserRepository extends MongoRepository<User, String> {
     User findByEmail(String username);
+
+    boolean existsByEmail(String email);
 }
 
