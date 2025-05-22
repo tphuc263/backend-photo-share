@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import share_app.tphucshareapp.dto.request.photo.CreatePhotoRequest;
 import share_app.tphucshareapp.dto.response.ApiResponse;
+import share_app.tphucshareapp.dto.response.photo.PhotoDetailResponse;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
 import share_app.tphucshareapp.service.photo.PhotoService;
 
@@ -22,5 +23,32 @@ public class PhotoController {
             @ModelAttribute CreatePhotoRequest request) {
         PhotoResponse photo = photoService.createPhoto(request);
         return ResponseEntity.ok(ApiResponse.success(photo, "Photo created successfully"));
+    }
+
+    // get all photo
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<Page<PhotoResponse>>> getAllPhotos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<PhotoResponse> photos = photoService.getAllPhotos(page, size);
+        return ResponseEntity.ok(ApiResponse.success(photos, "Photos retrieved successfully"));
+    }
+
+    // get photo by user id with pagination
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<ApiResponse<Page<PhotoResponse>>> getPhotosByUserId(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<PhotoResponse> photos = photoService.getPhotosByUserId(userId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(photos, "User photos retrieved successfully"));
+    }
+
+    // get photo detail by id
+    @GetMapping("/{photoId}")
+    public ResponseEntity<ApiResponse<PhotoDetailResponse>> getPhotoById(
+            @PathVariable String photoId) {
+        PhotoDetailResponse photo = photoService.getPhotoById(photoId);
+        return ResponseEntity.ok(ApiResponse.success(photo, "Photo details retrieved successfully"));
     }
 }

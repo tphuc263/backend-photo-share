@@ -1,11 +1,14 @@
 package share_app.tphucshareapp.dto.response.photo;
 
 import lombok.Data;
+import share_app.tphucshareapp.dto.response.comment.CommentResponse;
+import share_app.tphucshareapp.dto.response.like.LikeResponse;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
-public class PhotoResponse {
+public class PhotoDetailResponse {
     private String id;
     private String userId;
     private String username;
@@ -16,4 +19,6 @@ public class PhotoResponse {
     private int likesCount;
     private int commentsCount;
     private boolean isLikedByCurrentUser;
+    private List<LikeResponse> likes;
+    private List<CommentResponse> comments;
 }
