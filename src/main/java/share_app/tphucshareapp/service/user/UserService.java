@@ -20,35 +20,54 @@ public class UserService implements IUserService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
 
-    public User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        AppUserDetails userDetails = (AppUserDetails) authentication.getPrincipal();
-        return userRepository.findById(userDetails.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
-
     @Override
     public UserProfileResponse getUserProfileById(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        UserProfileResponse response = modelMapper.map(user, UserProfileResponse.class);
-        response.setRole(user.getRole().name());
-        return response;
+        User user = findUserById(userId);
+        return modelMapper.map(user, UserProfileResponse.class);
     }
 
     @Override
     public UserProfileResponse getCurrentUserProfile() {
         User user = getCurrentUser();
-        UserProfileResponse response = modelMapper.map(user, UserProfileResponse.class);
-        response.setRole(user.getRole().name());
-        return response;
+        return modelMapper.map(user, UserProfileResponse.class);
     }
 
     @Override
     public UserProfileResponse updateProfile(UpdateProfileRequest request) {
         User user = getCurrentUser();
+        updateUserFields(user, request);
+        User updatedUser = userRepository.save(user);
+        log.info("User profile updated successfully for user ID: {}", updatedUser.getId());
+        return modelMapper.map(updatedUser, UserProfileResponse.class);
+    }
 
+    // helper methods
+    public User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!isUserAuthenticated(authentication)) {
+            log.warn("User not authenticated properly. Authentication: {}",
+                    authentication != null ? authentication.getClass().getSimpleName() : "null");
+            throw new RuntimeException("User not authenticated properly");
+        }
+        AppUserDetails userDetails = (AppUserDetails) authentication.getPrincipal();
+        return findUserById(userDetails.getId());
+    }
+
+    private boolean isUserAuthenticated(Authentication authentication) {
+        return authentication != null &&
+                authentication.isAuthenticated() &&
+                authentication.getPrincipal() instanceof AppUserDetails;
+    }
+
+    private User findUserById(String userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    log.error("User not found with ID: {}", userId);
+                    return new RuntimeException("User not found with ID: " + userId);
+                });
+    }
+
+    private void updateUserFields(User user, UpdateProfileRequest request) {
         if (request.getFirstName() != null) {
             user.setFirstName(request.getFirstName());
         }
@@ -58,11 +77,5 @@ public class UserService implements IUserService {
         if (request.getBio() != null) {
             user.setBio(request.getBio());
         }
-
-        User updatedUser = userRepository.save(user);
-
-        UserProfileResponse response = modelMapper.map(updatedUser, UserProfileResponse.class);
-        response.setRole(updatedUser.getRole().name());
-        return response;
     }
 }

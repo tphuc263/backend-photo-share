@@ -31,16 +31,42 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = parseJwt(request);
+
+            if (log.isDebugEnabled()) {
+                log.debug("Processing request: {} {} with Content-Type: {}",
+                        request.getMethod(), request.getRequestURI(), request.getContentType());
+                log.debug("JWT token present: {}", jwt != null);
+            }
+
             if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
-                String username = jwtUtils.getEmailFromToken(jwt);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                var auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                authenticateUser(jwt);
+            } else if (log.isDebugEnabled()) {
+                log.debug("JWT token invalid or not present, authentication will be anonymous");
             }
         } catch (Exception e) {
-            log.error("authentication JWT error: {}", e.getMessage());
+            log.error("Cannot set user authentication for request: {} {}",
+                    request.getMethod(), request.getRequestURI(), e);
         }
+
         filterChain.doFilter(request, response);
+    }
+
+    private void authenticateUser(String jwt) {
+        try {
+            String username = jwtUtils.getEmailFromToken(jwt);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+            var authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            if (log.isDebugEnabled()) {
+                log.debug("Authentication set successfully for user: {}", username);
+            }
+        } catch (Exception e) {
+            log.error("Failed to authenticate user from JWT token", e);
+            throw e;
+        }
     }
 
     public String parseJwt(HttpServletRequest request) {

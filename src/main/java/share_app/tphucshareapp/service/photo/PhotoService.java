@@ -27,8 +27,10 @@ public class PhotoService implements IPhotoService {
 
     @Override
     public PhotoResponse createPhoto(CreatePhotoRequest request) {
+        log.info("Creating new photo with caption: {}", request.getCaption());
         Map uploadResult = cloudinaryService.uploadImage(request.getImage());
         String imageUrl = (String) uploadResult.get("secure_url");
+        log.info("Image uploaded successfully, URL: {}", imageUrl);
 
         // Create photo entity
         User currentUser = userService.getCurrentUser();

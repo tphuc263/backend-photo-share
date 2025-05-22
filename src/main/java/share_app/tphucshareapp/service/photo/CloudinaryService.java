@@ -14,28 +14,48 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class CloudinaryService {
+    private static final String UPLOAD_FOLDER = "share_app";
+    private static final String SECURE_URL_KEY = "secure_url";
+    private static final String PUBLIC_ID_KEY = "public_id";
     private final Cloudinary cloudinary;
 
     public Map<String, Object> uploadImage(MultipartFile file){
-        Map<String, Object> params = new HashMap<>();
-        params.put("folder", "share_app");
-        params.put("resource_type", "auto");
-        params.put("unique_filename", true);
+        validateFile(file);
+
+        log.info("Starting image upload - filename: {}, size: {} bytes",
+                file.getOriginalFilename(), file.getSize());
+
+        Map<String, Object> uploadParams = createUploadParams();
 
         try {
-            return cloudinary.uploader().upload(file.getBytes(), params);
+            Map<String, Object> result = cloudinary.uploader().upload(file.getBytes(), uploadParams);
+
+            log.info("Image uploaded successfully - publicId: {}, url: {}",
+                    result.get(PUBLIC_ID_KEY), result.get(SECURE_URL_KEY));
+
+            return result;
         } catch (IOException e) {
-            log.error("Error uploading image to Cloudinary", e);
-            throw new RuntimeException("Error uploading image to Cloudinary");
+            log.error("Failed to upload image to Cloudinary - filename: {}",
+                    file.getOriginalFilename(), e);
+            throw new RuntimeException("Failed to upload image to Cloudinary", e);
         }
     }
 
-    public Map<String, Object> deleteImage(String publicId){
+    public Map<String, Object> deleteImage(String publicId) {
+        if (publicId == null || publicId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public ID cannot be null or empty");
+        }
+
+        log.info("Deleting image from Cloudinary - publicId: {}", publicId);
+
         try {
-            return cloudinary.uploader().destroy(publicId, Map.of());
+            Map<String, Object> result = cloudinary.uploader().destroy(publicId, Map.of());
+
+            log.info("Image deleted successfully - publicId: {}", publicId);
+            return result;
         } catch (IOException e) {
-            log.error("Error deleting image from Cloudinary: {}", publicId, e);
-            throw new RuntimeException("Error deleting image from Cloudinary");
+            log.error("Failed to delete image from Cloudinary - publicId: {}", publicId, e);
+            throw new RuntimeException("Failed to delete image from Cloudinary", e);
         }
     }
 
@@ -78,5 +98,29 @@ public class CloudinaryService {
             log.error("Error extracting publicId from URL: {}", imageUrl, e);
             return null;
         }
+    }
+
+    // helper methods
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be null or empty");
+        }
+
+        if (file.getSize() == 0) {
+            throw new IllegalArgumentException("File size cannot be zero");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("File must be an image");
+        }
+    }
+
+    private Map<String, Object> createUploadParams() {
+        Map<String, Object> params = new HashMap<>();
+        params.put("folder", UPLOAD_FOLDER);
+        params.put("resource_type", "auto");
+        params.put("unique_filename", true);
+        return params;
     }
 }
