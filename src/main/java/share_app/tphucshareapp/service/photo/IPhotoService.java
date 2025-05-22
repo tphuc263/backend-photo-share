@@ -5,8 +5,6 @@ import share_app.tphucshareapp.dto.request.photo.CreatePhotoRequest;
 import share_app.tphucshareapp.dto.response.photo.PhotoDetailResponse;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
 
-import java.io.IOException;
-
 public interface IPhotoService {
     PhotoResponse createPhoto(CreatePhotoRequest request);
 
@@ -15,4 +13,6 @@ public interface IPhotoService {
     Page<PhotoResponse> getPhotosByUserId(String userId, int page, int size);
 
     PhotoDetailResponse getPhotoById(String photoId);
+
+    void deletePhoto(String photoId);
 }

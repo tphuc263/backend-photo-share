@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import share_app.tphucshareapp.dto.request.photo.CreatePhotoRequest;
 import share_app.tphucshareapp.dto.response.comment.CommentResponse;
 import share_app.tphucshareapp.dto.response.like.LikeResponse;
@@ -105,6 +106,60 @@ public class PhotoService implements IPhotoService {
 
         return response;
     }
+
+    @Override
+    @Transactional
+    public void deletePhoto(String photoId) {
+        log.info("Deleting photo with ID: {}", photoId);
+
+        // Verify photo exists and user has permission to delete
+        Photo photo = photoRepository.findById(photoId)
+                .orElseThrow(() -> new RuntimeException("Photo not found with ID: " + photoId));
+
+        User currentUser = userService.getCurrentUser();
+
+        // Check if current user is the owner of the photo or admin
+        if (!photo.getUserId().equals(currentUser.getId()) &&
+                !currentUser.getRole().name().equals("ROLE_ADMIN")) {
+            throw new RuntimeException("You don't have permission to delete this photo");
+        }
+
+        try {
+            // Delete image from Cloudinary
+            String publicId = cloudinaryService.extractPublicIdFromUrl(photo.getImageURL());
+            if (publicId != null) {
+                cloudinaryService.deleteImage(publicId);
+                log.info("Image deleted from Cloudinary for photo ID: {}", photoId);
+            }
+
+            // Delete related data first (to avoid foreign key constraints)
+            // Delete all likes for this photo
+            List<Like> likes = likeRepository.findByPhotoIdOrderByCreatedAtDesc(photoId);
+            if (!likes.isEmpty()) {
+                likeRepository.deleteAll(likes);
+                log.info("Deleted {} likes for photo ID: {}", likes.size(), photoId);
+            }
+
+            // Delete all comments for this photo
+            List<Comment> comments = commentRepository.findByPhotoIdOrderByCreatedAtAsc(photoId);
+            if (!comments.isEmpty()) {
+                commentRepository.deleteAll(comments);
+                log.info("Deleted {} comments for photo ID: {}", comments.size(), photoId);
+            }
+
+            // Delete photo tags if you have that relationship
+            // photoTagRepository.deleteByPhotoId(photoId);
+
+            // Finally delete the photo
+            photoRepository.deleteById(photoId);
+            log.info("Photo deleted successfully with ID: {}", photoId);
+
+        } catch (Exception e) {
+            log.error("Failed to delete photo with ID: {}", photoId, e);
+            throw new RuntimeException("Failed to delete photo", e);
+        }
+    }
+
 
     // helper methods
     private PhotoResponse convertToPhotoResponse(Photo photo) {

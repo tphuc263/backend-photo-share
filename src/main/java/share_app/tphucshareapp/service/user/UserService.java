@@ -3,6 +3,9 @@ package share_app.tphucshareapp.service.user;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -12,6 +15,9 @@ import share_app.tphucshareapp.dto.response.user.UserProfileResponse;
 import share_app.tphucshareapp.model.User;
 import share_app.tphucshareapp.repository.UserRepository;
 import share_app.tphucshareapp.security.userdetails.AppUserDetails;
+import share_app.tphucshareapp.service.photo.CloudinaryService;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +25,7 @@ import share_app.tphucshareapp.security.userdetails.AppUserDetails;
 public class UserService implements IUserService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     public UserProfileResponse getUserProfileById(String userId) {
@@ -35,10 +42,45 @@ public class UserService implements IUserService {
     @Override
     public UserProfileResponse updateProfile(UpdateProfileRequest request) {
         User user = getCurrentUser();
+        String oldImageUrl = user.getImageUrl();
         updateUserFields(user, request);
+
+        // Handle image update if provided
+        if (request.getImage() != null && !request.getImage().isEmpty()) {
+            try {
+                // Delete old image if exists
+                if (oldImageUrl != null && !oldImageUrl.isEmpty()) {
+                    String publicId = cloudinaryService.extractPublicIdFromUrl(oldImageUrl);
+                    if (publicId != null) {
+                        cloudinaryService.deleteImage(publicId);
+                        log.info("Old profile image deleted for user ID: {}", user.getId());
+                    }
+                }
+
+                // Upload new image
+                Map<String, Object> uploadResult = cloudinaryService.uploadImage(request.getImage());
+                String newImageUrl = (String) uploadResult.get("secure_url");
+                user.setImageUrl(newImageUrl);
+                log.info("New profile image uploaded for user ID: {}", user.getId());
+
+            } catch (Exception e) {
+                log.error("Failed to update profile image for user ID: {}", user.getId(), e);
+                throw new RuntimeException("Failed to update profile image", e);
+            }
+        }
+
         User updatedUser = userRepository.save(user);
         log.info("User profile updated successfully for user ID: {}", updatedUser.getId());
         return modelMapper.map(updatedUser, UserProfileResponse.class);
+    }
+
+    @Override
+    public Page<UserProfileResponse> getAllUsers(int page, int size) {
+        log.info("Fetching all users - page: {}, size: {}", page, size);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> users = userRepository.findAll(pageable);
+
+        return users.map(this::mapToUserProfileResponse);
     }
 
     // helper methods
@@ -77,5 +119,14 @@ public class UserService implements IUserService {
         if (request.getBio() != null) {
             user.setBio(request.getBio());
         }
+    }
+
+    private UserProfileResponse mapToUserProfileResponse(User user) {
+        UserProfileResponse response = modelMapper.map(user, UserProfileResponse.class);
+        // Set role as string
+        if (user.getRole() != null) {
+            response.setRole(user.getRole().name());
+        }
+        return response;
     }
 }

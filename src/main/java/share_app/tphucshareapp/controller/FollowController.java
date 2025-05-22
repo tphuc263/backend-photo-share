@@ -23,7 +23,7 @@ public class FollowController {
         return ResponseEntity.ok(ApiResponse.success(null, "Follow status toggled successfully"));
     }
 
-    // Get followers of a user
+    // Get followers of a user  
     @GetMapping("/{userId}/followers")
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getFollowers(
             @PathVariable String userId,
