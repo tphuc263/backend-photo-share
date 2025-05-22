@@ -52,6 +52,7 @@ public class PhotoController {
         return ResponseEntity.ok(ApiResponse.success(photo, "Photo details retrieved successfully"));
     }
 
+    // delete by id
     @DeleteMapping("/{photoId}")
     public ResponseEntity<ApiResponse<Void>> deletePhoto(@PathVariable String photoId) {
         photoService.deletePhoto(photoId);

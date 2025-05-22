@@ -15,6 +15,7 @@ import share_app.tphucshareapp.repository.FollowRepository;
 import share_app.tphucshareapp.repository.UserRepository;
 import share_app.tphucshareapp.service.user.UserService;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -52,6 +53,7 @@ public class FollowService implements IFollowService {
             Follow follow = new Follow();
             follow.setFollowerId(currentUser.getId());
             follow.setFollowingId(targetUserId);
+            follow.setCreatedAt(Instant.now());
 
             followRepository.save(follow);
             log.info("User {} followed user {}", currentUser.getId(), targetUserId);
