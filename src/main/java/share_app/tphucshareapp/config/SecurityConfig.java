@@ -50,7 +50,7 @@ public class SecurityConfig {
         List<String> securedUrls =
                 List.of(
                         API + "/user/**",
-//                        API + "/photos/**",
+                        API + "/photos/**",
                         API + "/likes/**",
                         API + "/comments/**",
                         API + "/follows/**"
