@@ -3,6 +3,10 @@ package share_app.tphucshareapp.repository;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import share_app.tphucshareapp.model.PhotoTag;
 
-public interface PhotoTagRepository extends MongoRepository<PhotoTag, String> {
+import java.util.List;
 
+public interface PhotoTagRepository extends MongoRepository<PhotoTag, String> {
+    List<PhotoTag> findByPhotoId(String photoId);
+    List<PhotoTag> findByTagId(String tagId);
+    void deleteByPhotoId(String photoId);
 }

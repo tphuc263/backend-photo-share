@@ -3,6 +3,7 @@ package share_app.tphucshareapp.dto.response.photo;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 public class PhotoResponse {
@@ -16,4 +17,5 @@ public class PhotoResponse {
     private int likesCount;
     private int commentsCount;
     private boolean isLikedByCurrentUser;
+    private List<String> tags;
 }

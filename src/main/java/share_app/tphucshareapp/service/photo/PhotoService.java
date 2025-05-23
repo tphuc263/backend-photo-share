@@ -13,14 +13,12 @@ import share_app.tphucshareapp.dto.response.comment.CommentResponse;
 import share_app.tphucshareapp.dto.response.like.LikeResponse;
 import share_app.tphucshareapp.dto.response.photo.PhotoDetailResponse;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
-import share_app.tphucshareapp.model.Like;
-import share_app.tphucshareapp.model.Photo;
-import share_app.tphucshareapp.model.User;
-import share_app.tphucshareapp.model.Comment;
+import share_app.tphucshareapp.model.*;
 import share_app.tphucshareapp.repository.CommentRepository;
 import share_app.tphucshareapp.repository.LikeRepository;
 import share_app.tphucshareapp.repository.PhotoRepository;
 import share_app.tphucshareapp.repository.UserRepository;
+import share_app.tphucshareapp.service.tag.TagService;
 import share_app.tphucshareapp.service.user.UserService;
 
 import java.time.Instant;
@@ -39,6 +37,7 @@ public class PhotoService implements IPhotoService {
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final TagService tagService;
 
 
     @Override
@@ -58,6 +57,12 @@ public class PhotoService implements IPhotoService {
 
         // Save photo to database
         Photo savedPhoto = photoRepository.save(photo);
+
+        // Handle tags
+        if (request.getTags() != null && !request.getTags().isEmpty()) {
+            List<Tag> tags = tagService.createOrGetTags(request.getTags());
+            tagService.addTagsToPhoto(savedPhoto.getId(), tags);
+        }
 
         return convertToPhotoResponse(savedPhoto, currentUser);
     }
@@ -147,8 +152,8 @@ public class PhotoService implements IPhotoService {
                 log.info("Deleted {} comments for photo ID: {}", comments.size(), photoId);
             }
 
-            // Delete photo tags if you have that relationship
-            // photoTagRepository.deleteByPhotoId(photoId);
+            // Delete photo tags
+            tagService.removeTagsFromPhoto(photoId);
 
             // Finally delete the photo
             photoRepository.deleteById(photoId);
@@ -186,6 +191,9 @@ public class PhotoService implements IPhotoService {
             // User not authenticated, set to false
             response.setLikedByCurrentUser(false);
         }
+
+        List<Tag> tags = tagService.getPhotoTags(photo.getId());
+        response.setTags(tags.stream().map(Tag::getName).toList());
 
         return response;
     }

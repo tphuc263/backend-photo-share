@@ -21,4 +21,5 @@ public class PhotoDetailResponse {
     private boolean isLikedByCurrentUser;
     private List<LikeResponse> likes;
     private List<CommentResponse> comments;
+    private List<String> tags;
 }
