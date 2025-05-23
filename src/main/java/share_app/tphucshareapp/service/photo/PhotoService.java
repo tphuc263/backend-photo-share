@@ -39,7 +39,6 @@ public class PhotoService implements IPhotoService {
     private final UserRepository userRepository;
     private final TagService tagService;
 
-
     @Override
     public PhotoResponse createPhoto(CreatePhotoRequest request) {
         log.info("Creating new photo with caption: {}", request.getCaption());
