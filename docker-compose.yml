@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # MongoDB Replica Set for Sharding
+  mongo-config-1:
+    image: mongo:7.0
+    container_name: mongo-config-1
+    command: mongod --configsvr --replSet cfgRS --port 27017 --dbpath /data/db
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-config-1-data:/data/db
+    networks:
+      - share-app-network
+
+  mongo-config-2:
+    image: mongo:7.0
+    container_name: mongo-config-2
+    command: mongod --configsvr --replSet cfgRS --port 27017 --dbpath /data/db
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo-config-2-data:/data/db
+    networks:
+      - share-app-network
+
+  mongo-config-3:
+    image: mongo:7.0
+    container_name: mongo-config-3
+    command: mongod --configsvr --replSet cfgRS --port 27017 --dbpath /data/db
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo-config-3-data:/data/db
+    networks:
+      - share-app-network
+
+  # Shard 1 Replica Set
+  mongo-shard1-1:
+    image: mongo:7.0
+    container_name: mongo-shard1-1
+    command: mongod --shardsvr --replSet shard1RS --port 27017 --dbpath /data/db
+    ports:
+      - "27021:27017"
+    volumes:
+      - mongo-shard1-1-data:/data/db
+    networks:
+      - share-app-network
+
+  mongo-shard1-2:
+    image: mongo:7.0
+    container_name: mongo-shard1-2
+    command: mongod --shardsvr --replSet shard1RS --port 27017 --dbpath /data/db
+    ports:
+      - "27022:27017"
+    volumes:
+      - mongo-shard1-2-data:/data/db
+    networks:
+      - share-app-network
+
+  mongo-shard1-3:
+    image: mongo:7.0
+    container_name: mongo-shard1-3
+    command: mongod --shardsvr --replSet shard1RS --port 27017 --dbpath /data/db
+    ports:
+      - "27023:27017"
+    volumes:
+      - mongo-shard1-3-data:/data/db
+    networks:
+      - share-app-network
+
+  # Shard 2 Replica Set
+  mongo-shard2-1:
+    image: mongo:7.0
+    container_name: mongo-shard2-1
+    command: mongod --shardsvr --replSet shard2RS --port 27017 --dbpath /data/db
+    ports:
+      - "27024:27017"
+    volumes:
+      - mongo-shard2-1-data:/data/db
+    networks:
+      - share-app-network
+
+  mongo-shard2-2:
+    image: mongo:7.0
+    container_name: mongo-shard2-2
+    command: mongod --shardsvr --replSet shard2RS --port 27017 --dbpath /data/db
+    ports:
+      - "27025:27017"
+    volumes:
+      - mongo-shard2-2-data:/data/db
+    networks:
+      - share-app-network
+
+  mongo-shard2-3:
+    image: mongo:7.0
+    container_name: mongo-shard2-3
+    command: mongod --shardsvr --replSet shard2RS --port 27017 --dbpath /data/db
+    ports:
+      - "27026:27017"
+    volumes:
+      - mongo-shard2-3-data:/data/db
+    networks:
+      - share-app-network
+
+  # Mongos Router
+  mongos:
+    image: mongo:7.0
+    container_name: mongos
+    command: mongos --configdb cfgRS/mongo-config-1:27017,mongo-config-2:27017,mongo-config-3:27017 --port 27017
+    ports:
+      - "27017:27017"
+    depends_on:
+      - mongo-config-1
+      - mongo-config-2
+      - mongo-config-3
+    networks:
+      - share-app-network
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    container_name: share-app-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - share-app-network
+
+  # Spring Boot Application
+  share-app:
+    build: .
+    container_name: share-app-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATA_MONGODB_HOST=mongos
+      - SPRING_DATA_MONGODB_PORT=27017
+      - SPRING_DATA_MONGODB_DATABASE=shareapp
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+    depends_on:
+      - mongos
+      - redis
+    networks:
+      - share-app-network
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  mongo-config-1-data:
+  mongo-config-2-data:
+  mongo-config-3-data:
+  mongo-shard1-1-data:
+  mongo-shard1-2-data:
+  mongo-shard1-3-data:
+  mongo-shard2-1-data:
+  mongo-shard2-2-data:
+  mongo-shard2-3-data:
+  redis-data:
+
+networks:
+  share-app-network:
+    driver: bridge
