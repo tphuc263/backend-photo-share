@@ -38,6 +38,7 @@ public class PhotoService implements IPhotoService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final TagService tagService;
+    private final NewsfeedService newsfeedService;
 
     @Override
     public PhotoResponse createPhoto(CreatePhotoRequest request) {
@@ -61,6 +62,14 @@ public class PhotoService implements IPhotoService {
         if (request.getTags() != null && !request.getTags().isEmpty()) {
             List<Tag> tags = tagService.createOrGetTags(request.getTags());
             tagService.addTagsToPhoto(savedPhoto.getId(), tags);
+        }
+
+        // create -> update for follower
+        try {
+            newsfeedService.updateFollowersFeeds(savedPhoto.getId(), currentUser.getId());
+            log.info("Updated followers' feeds for new photo: {}", savedPhoto.getId());
+        } catch (Exception e) {
+            log.error("Error updating followers' feeds for photo: {}", savedPhoto.getId(), e);
         }
 
         return convertToPhotoResponse(savedPhoto, currentUser);
@@ -166,12 +175,12 @@ public class PhotoService implements IPhotoService {
 
 
     // helper methods
-    private PhotoResponse convertToPhotoResponse(Photo photo) {
+    public PhotoResponse convertToPhotoResponse(Photo photo) {
         User photoOwner = userRepository.findById(photo.getUserId())
                 .orElseThrow(() -> new RuntimeException("Photo owner not found"));
         return convertToPhotoResponse(photo, photoOwner);
     }
-    private PhotoResponse convertToPhotoResponse(Photo photo, User photoOwner) {
+    public PhotoResponse convertToPhotoResponse(Photo photo, User photoOwner) {
         PhotoResponse response = modelMapper.map(photo, PhotoResponse.class);
         response.setUsername(photoOwner.getUsername());
         response.setUserImageUrl(photoOwner.getImageUrl());

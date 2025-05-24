@@ -13,6 +13,7 @@ import share_app.tphucshareapp.model.Follow;
 import share_app.tphucshareapp.model.User;
 import share_app.tphucshareapp.repository.FollowRepository;
 import share_app.tphucshareapp.repository.UserRepository;
+import share_app.tphucshareapp.service.photo.NewsfeedService;
 import share_app.tphucshareapp.service.user.UserService;
 
 import java.time.Instant;
@@ -27,6 +28,7 @@ public class FollowService implements IFollowService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final ModelMapper modelMapper;
+    private final NewsfeedService newsfeedService;
 
     @Override
     public void toggleFollow(String targetUserId) {
@@ -48,6 +50,14 @@ public class FollowService implements IFollowService {
             // Unfollow: remove existing follow relationship
             followRepository.delete(existingFollow.get());
             log.info("User {} unfollowed user {}", currentUser.getId(), targetUserId);
+
+            try {
+                newsfeedService.generateNewsfeedCache(currentUser.getId());
+                log.info("Regenerated newsfeed cache after unfollow for user: {}", currentUser.getId());
+            } catch (Exception e) {
+                log.error("Error regenerating newsfeed cache after unfollow", e);
+            }
+
         } else {
             // Follow: create new follow relationship
             Follow follow = new Follow();
@@ -57,6 +67,13 @@ public class FollowService implements IFollowService {
 
             followRepository.save(follow);
             log.info("User {} followed user {}", currentUser.getId(), targetUserId);
+
+            try {
+                newsfeedService.generateNewsfeedCache(currentUser.getId());
+                log.info("Regenerated newsfeed cache after follow for user: {}", currentUser.getId());
+            } catch (Exception e) {
+                log.error("Error regenerating newsfeed cache after follow", e);
+            }
         }
     }
 
