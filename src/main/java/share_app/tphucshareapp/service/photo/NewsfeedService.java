@@ -26,21 +26,19 @@ import java.util.stream.Collectors;
 @Slf4j
 public class NewsfeedService implements INewsfeedService {
 
-    private final PhotoService photoService;
     private final FollowRepository followRepository;
     private final PhotoRepository photoRepository;
     private final UserService userService;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final PhotoConversionService photoConversionService; // Use conversion service instead of PhotoService
 
     // Cache configuration
     private static final String NEWSFEED_CACHE_KEY = "newsfeed:user:";
     private static final Duration CACHE_TTL = Duration.ofHours(2);
     private static final int MAX_CACHED_ITEMS = 200;
     private static final int RELEVANCE_WINDOW_DAYS = 7;
-    private final UserRepository userRepository;
-    private final ModelMapper modelMapper;
 
     @Override
     public Page<PhotoResponse> getNewsfeed(String userId, int page, int size) {
@@ -97,7 +95,7 @@ public class NewsfeedService implements INewsfeedService {
             // Fetch photos and convert to response
             List<Photo> photos = photoRepository.findAllById(pagePhotoIds);
             List<PhotoResponse> photoResponses = photos.stream()
-                    .map(photoService::convertToPhotoResponse)
+                    .map(photoConversionService::convertToPhotoResponse) // Use conversion service
                     .toList();
 
             // Maintain order from cache
@@ -143,7 +141,6 @@ public class NewsfeedService implements INewsfeedService {
             log.error("Error generating newsfeed cache for user: {}", userId, e);
         }
     }
-
 
     @Override
     public void updateFollowersFeeds(String photoId, String authorId) {
@@ -278,7 +275,7 @@ public class NewsfeedService implements INewsfeedService {
         // create list(sub, page), each page contain size records
         List<Photo> pagePhotos = photos.subList(start, end);
         List<PhotoResponse> photoResponses = pagePhotos.stream()
-                .map(photoService::convertToPhotoResponse)
+                .map(photoConversionService::convertToPhotoResponse) // Use conversion service
                 .toList();
         return new PageImpl<>(photoResponses, pageable, photos.size());
     }

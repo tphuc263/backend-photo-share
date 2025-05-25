@@ -3,6 +3,7 @@ package share_app.tphucshareapp.service.photo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,7 @@ import share_app.tphucshareapp.dto.response.comment.CommentResponse;
 import share_app.tphucshareapp.dto.response.like.LikeResponse;
 import share_app.tphucshareapp.dto.response.photo.PhotoDetailResponse;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
+import share_app.tphucshareapp.event.PhotoCreatedEvent;
 import share_app.tphucshareapp.model.*;
 import share_app.tphucshareapp.repository.CommentRepository;
 import share_app.tphucshareapp.repository.LikeRepository;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class PhotoService implements IPhotoService {
+
     private final CloudinaryService cloudinaryService;
     private final PhotoRepository photoRepository;
     private final UserService userService;
@@ -38,7 +41,8 @@ public class PhotoService implements IPhotoService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final TagService tagService;
-    private final NewsfeedService newsfeedService;
+    private final PhotoConversionService photoConversionService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public PhotoResponse createPhoto(CreatePhotoRequest request) {
@@ -64,15 +68,11 @@ public class PhotoService implements IPhotoService {
             tagService.addTagsToPhoto(savedPhoto.getId(), tags);
         }
 
-        // create -> update for follower
-        try {
-            newsfeedService.updateFollowersFeeds(savedPhoto.getId(), currentUser.getId());
-            log.info("Updated followers' feeds for new photo: {}", savedPhoto.getId());
-        } catch (Exception e) {
-            log.error("Error updating followers' feeds for photo: {}", savedPhoto.getId(), e);
-        }
+        // Publish event to update followers' feeds asynchronously
+        eventPublisher.publishEvent(new PhotoCreatedEvent(this, savedPhoto.getId(), currentUser.getId()));
 
-        return convertToPhotoResponse(savedPhoto, currentUser);
+        log.info("Photo created successfully with ID: {}", savedPhoto.getId());
+        return photoConversionService.convertToPhotoResponse(savedPhoto, currentUser);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class PhotoService implements IPhotoService {
         Pageable pageable = PageRequest.of(page, size);
         Page<Photo> photos = photoRepository.findAllByOrderByCreatedAtDesc(pageable);
 
-        return photos.map(this::convertToPhotoResponse);
+        return photos.map(photoConversionService::convertToPhotoResponse);
     }
 
     @Override
@@ -95,7 +95,7 @@ public class PhotoService implements IPhotoService {
         Pageable pageable = PageRequest.of(page, size);
         Page<Photo> photos = photoRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
 
-        return photos.map(photo -> convertToPhotoResponse(photo, user));
+        return photos.map(photo -> photoConversionService.convertToPhotoResponse(photo, user));
     }
 
     @Override
@@ -173,39 +173,16 @@ public class PhotoService implements IPhotoService {
         }
     }
 
-
-    // helper methods
+    // Delegate conversion to PhotoConversionService
     public PhotoResponse convertToPhotoResponse(Photo photo) {
-        User photoOwner = userRepository.findById(photo.getUserId())
-                .orElseThrow(() -> new RuntimeException("Photo owner not found"));
-        return convertToPhotoResponse(photo, photoOwner);
+        return photoConversionService.convertToPhotoResponse(photo);
     }
+
     public PhotoResponse convertToPhotoResponse(Photo photo, User photoOwner) {
-        PhotoResponse response = modelMapper.map(photo, PhotoResponse.class);
-        response.setUsername(photoOwner.getUsername());
-        response.setUserImageUrl(photoOwner.getImageUrl());
-
-        // Set counts
-        response.setLikesCount((int) likeRepository.countByPhotoId(photo.getId()));
-        response.setCommentsCount((int) commentRepository.countByPhotoId(photo.getId()));
-
-        // Check if current user liked this photo
-        try {
-            User currentUser = userService.getCurrentUser();
-            response.setLikedByCurrentUser(
-                    likeRepository.existsByPhotoIdAndUserId(photo.getId(), currentUser.getId())
-            );
-        } catch (Exception e) {
-            // User not authenticated, set to false
-            response.setLikedByCurrentUser(false);
-        }
-
-        List<Tag> tags = tagService.getPhotoTags(photo.getId());
-        response.setTags(tags.stream().map(Tag::getName).toList());
-
-        return response;
+        return photoConversionService.convertToPhotoResponse(photo, photoOwner);
     }
 
+    // Keep these methods for PhotoDetailResponse (specific to this service)
     private PhotoDetailResponse convertToPhotoDetailResponse(Photo photo, User photoOwner) {
         PhotoDetailResponse response = modelMapper.map(photo, PhotoDetailResponse.class);
         response.setUsername(photoOwner.getUsername());

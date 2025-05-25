@@ -13,12 +13,13 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CloudinaryService {
+public class CloudinaryService implements ICloudinaryService {
     private static final String UPLOAD_FOLDER = "share_app";
     private static final String SECURE_URL_KEY = "secure_url";
     private static final String PUBLIC_ID_KEY = "public_id";
     private final Cloudinary cloudinary;
 
+    @Override
     public Map<String, Object> uploadImage(MultipartFile file){
         validateFile(file);
 
@@ -41,6 +42,7 @@ public class CloudinaryService {
         }
     }
 
+    @Override
     public Map<String, Object> deleteImage(String publicId) {
         if (publicId == null || publicId.trim().isEmpty()) {
             throw new IllegalArgumentException("Public ID cannot be null or empty");
@@ -59,6 +61,7 @@ public class CloudinaryService {
         }
     }
 
+    @Override
     public String extractPublicIdFromUrl(String imageUrl) {
         try {
             if (imageUrl == null || !imageUrl.contains("/upload/")) {
