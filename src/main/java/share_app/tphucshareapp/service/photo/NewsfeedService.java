@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
 import share_app.tphucshareapp.model.Follow;
 import share_app.tphucshareapp.model.Photo;
-import share_app.tphucshareapp.model.User;
 import share_app.tphucshareapp.repository.*;
 import share_app.tphucshareapp.service.user.UserService;
 
