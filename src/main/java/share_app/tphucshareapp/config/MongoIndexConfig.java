@@ -221,6 +221,55 @@ public class MongoIndexConfig {
         log.info("✓ PhotoTag indexes created");
     }
 
+    private void createSearchIndexes() {
+        String userCollection = "users";
+        String photoCollection = "photos";
+
+        // Text indexes for full-text search
+        try {
+            // User text index
+            ensureIndex(userCollection,
+                    new CompoundIndexDefinition(
+                            new org.bson.Document()
+                                    .append("username", "text")
+                                    .append("firstName", "text")
+                                    .append("lastName", "text")
+                                    .append("bio", "text")
+                    ).weights(new org.bson.Document()
+                            .append("username", 3)
+                            .append("firstName", 2)
+                            .append("lastName", 2)
+                            .append("bio", 1)
+                    ));
+
+            // Photo text index
+            ensureIndex(photoCollection,
+                    new CompoundIndexDefinition(
+                            new org.bson.Document("caption", "text")
+                    ).weights(new org.bson.Document("caption", 2)));
+
+            log.info("✓ Text search indexes created");
+
+        } catch (Exception e) {
+            log.warn("Text index creation failed, using fallback regex search: {}", e.getMessage());
+        }
+
+        // Regex search fallback indexes
+        ensureIndex(userCollection,
+                new Index().on("username", Sort.Direction.ASC));
+
+        ensureIndex(userCollection,
+                new Index().on("firstName", Sort.Direction.ASC));
+
+        ensureIndex(userCollection,
+                new Index().on("lastName", Sort.Direction.ASC));
+
+        ensureIndex(photoCollection,
+                new Index().on("caption", Sort.Direction.ASC));
+
+        log.info("✓ Search fallback indexes created");
+    }
+
     /**
      * Helper method to safely create indexes
      */
