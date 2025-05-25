@@ -9,10 +9,6 @@ import java.time.Instant;
 
 @Data
 @Document(collection = "follows")
-@CompoundIndex(
-        name = "follower_following_id",
-        def = "{'followerId': 1, 'followingId': 1}",
-        unique = true)
 public class Follow {
 
     @Id

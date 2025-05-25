@@ -10,7 +10,7 @@ import share_app.tphucshareapp.service.photo.NewsfeedService;
 import share_app.tphucshareapp.service.user.UserService;
 
 @RestController
-@RequestMapping("${api.prefix}/newsfeed}")
+@RequestMapping("${api.prefix}/newsfeed")
 @RequiredArgsConstructor
 public class NewsfeedController {
     private final NewsfeedService newsfeedService;

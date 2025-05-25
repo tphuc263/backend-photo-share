@@ -9,7 +9,6 @@ import java.time.Instant;
 
 @Data
 @Document(collection = "photo_tag")
-@CompoundIndex(name = "photo_tag_unique", def = "{'photoId': 1, 'tagId': 1}", unique = true)
 public class PhotoTag {
 
     @Id

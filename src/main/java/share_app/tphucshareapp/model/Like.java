@@ -9,7 +9,6 @@ import java.time.Instant;
 
 @Data
 @Document(collection = "likes")
-@CompoundIndex(name = "photo_user_index", def = "{'photoId': 1, 'userId': 1}", unique = true)
 public class Like {
 
     @Id

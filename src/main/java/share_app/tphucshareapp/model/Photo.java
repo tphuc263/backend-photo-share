@@ -11,10 +11,6 @@ import java.time.Instant;
 
 @Data
 @Document(collection = "photos")
-@CompoundIndexes({
-        @CompoundIndex(name = "user_created_index", def = "{'userId': 1, 'createdAt': -1}"),
-        @CompoundIndex(name = "created_at_index", def = "{'createdAt': -1}")
-})
 public class Photo {
 
     @Id
