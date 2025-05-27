@@ -17,15 +17,14 @@ public interface PhotoRepository extends MongoRepository<Photo, String> {
 
     List<Photo> findByUserIdOrderByCreatedAtDesc(String userId);
 
-    // Text search in captions
-    @Query(value = "{ $text: { $search: ?0 } }",
-            fields = "{ score: { $meta: 'textScore' } }")
+    // Text search in captions - simplified approach
+    @Query("{ 'caption': { $regex: ?0, $options: 'i' } }")
     Page<Photo> findByTextSearch(String searchText, Pageable pageable);
 
-    // Caption search (partial match)
+    // Caption search (partial match) - this works better for simple cases
     Page<Photo> findByCaptionContainingIgnoreCase(String caption, Pageable pageable);
 
-    // Search photos by tag names
+    // Search photos by IDs with pagination
     @Query("{ '_id': { $in: ?0 } }")
     Page<Photo> findByPhotoIds(List<String> photoIds, Pageable pageable);
 }

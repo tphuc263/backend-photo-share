@@ -11,6 +11,8 @@ import org.springframework.data.mongodb.core.index.CompoundIndexDefinition;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.IndexDefinition;
 import org.springframework.data.mongodb.core.index.PartialIndexFilter;
+import org.springframework.data.mongodb.core.index.TextIndexDefinition;
+
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -34,6 +36,7 @@ public class MongoIndexConfig {
             createFollowIndexes();
             createTagIndexes();
             createPhotoTagIndexes();
+            createSearchIndexes();
 
             log.info("MongoDB indexes created successfully!");
         };
@@ -227,26 +230,22 @@ public class MongoIndexConfig {
 
         // Text indexes for full-text search
         try {
-            // User text index
-            ensureIndex(userCollection,
-                    new CompoundIndexDefinition(
-                            new org.bson.Document()
-                                    .append("username", "text")
-                                    .append("firstName", "text")
-                                    .append("lastName", "text")
-                                    .append("bio", "text")
-                    ).weights(new org.bson.Document()
-                            .append("username", 3)
-                            .append("firstName", 2)
-                            .append("lastName", 2)
-                            .append("bio", 1)
-                    ));
+            // User text index - sử dụng TextIndexDefinition
+            TextIndexDefinition userTextIndex = new TextIndexDefinition.TextIndexDefinitionBuilder()
+                    .onField("username", 3.0f)
+                    .onField("firstName", 2.0f)
+                    .onField("lastName", 2.0f)
+                    .onField("bio", 1.0f)
+                    .build();
+
+            ensureIndex(userCollection, userTextIndex);
 
             // Photo text index
-            ensureIndex(photoCollection,
-                    new CompoundIndexDefinition(
-                            new org.bson.Document("caption", "text")
-                    ).weights(new org.bson.Document("caption", 2)));
+            TextIndexDefinition photoTextIndex = new TextIndexDefinition.TextIndexDefinitionBuilder()
+                    .onField("caption", 2.0f)
+                    .build();
+
+            ensureIndex(photoCollection, photoTextIndex);
 
             log.info("✓ Text search indexes created");
 

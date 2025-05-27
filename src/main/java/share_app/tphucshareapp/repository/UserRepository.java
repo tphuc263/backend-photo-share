@@ -11,9 +11,13 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     boolean existsByEmail(String email);
 
-    // Text search with score
-    @Query(value = "{ $text: { $search: ?0 } }",
-            fields = "{ score: { $meta: 'textScore' } }")
+    // Text search simplified - fallback to regex if text index not available
+    @Query("{ $or: [ " +
+            "{ 'username': { $regex: ?0, $options: 'i' } }, " +
+            "{ 'firstName': { $regex: ?0, $options: 'i' } }, " +
+            "{ 'lastName': { $regex: ?0, $options: 'i' } }, " +
+            "{ 'bio': { $regex: ?0, $options: 'i' } } " +
+            "] }")
     Page<User> findByTextSearch(String searchText, Pageable pageable);
 
     // Username search (partial match)
