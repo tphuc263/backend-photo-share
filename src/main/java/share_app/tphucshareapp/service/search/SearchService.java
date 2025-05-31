@@ -85,10 +85,10 @@ public class SearchService implements ISearchService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        // Priority 1: Search by username first (most relevant)
-        Page<User> users = userRepository.findByUsernameContaining(sanitizedQuery, pageable);
+        // Sử dụng method đã có trong repository
+        Page<User> users = userRepository.findByUsernameContainingIgnoreCase(sanitizedQuery, pageable);
 
-        // If no results and query is longer, try extended search
+        // Nếu không tìm thấy, thử search theo name fields
         if (users.isEmpty() && sanitizedQuery.length() > 2) {
             users = userRepository.findByNameFields(sanitizedQuery, pageable);
         }
