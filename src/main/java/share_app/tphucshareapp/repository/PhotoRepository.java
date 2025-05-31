@@ -13,8 +13,6 @@ public interface PhotoRepository extends MongoRepository<Photo, String> {
 
     Page<Photo> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    long countByUserId(String userId);
-
     List<Photo> findByUserIdOrderByCreatedAtDesc(String userId);
 
     // Text search in captions - simplified approach

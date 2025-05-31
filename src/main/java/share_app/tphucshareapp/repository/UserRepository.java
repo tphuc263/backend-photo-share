@@ -20,9 +20,6 @@ public interface UserRepository extends MongoRepository<User, String> {
             "] }")
     Page<User> findByTextSearch(String searchText, Pageable pageable);
 
-    // Username search (partial match)
-    Page<User> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
-
     // Combined name search
     @Query("{ $or: [ " +
             "{ 'firstName': { $regex: ?0, $options: 'i' } }, " +
