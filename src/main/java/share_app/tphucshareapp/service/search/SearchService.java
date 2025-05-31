@@ -85,18 +85,14 @@ public class SearchService implements ISearchService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        // Try text search first (if text indexes are available)
-        try {
-            Page<User> users = userRepository.findByTextSearch(sanitizedQuery, pageable);
-            if (!users.isEmpty()) {
-                return users.map(this::convertToUserSearchResponse);
-            }
-        } catch (Exception e) {
-            log.warn("Text search failed, falling back to regex search: {}", e.getMessage());
+        // Priority 1: Search by username first (most relevant)
+        Page<User> users = userRepository.findByUsernameContaining(sanitizedQuery, pageable);
+
+        // If no results and query is longer, try extended search
+        if (users.isEmpty() && sanitizedQuery.length() > 2) {
+            users = userRepository.findByNameFields(sanitizedQuery, pageable);
         }
 
-        // Fallback to regex search
-        Page<User> users = userRepository.findByNameFields(sanitizedQuery, pageable);
         return users.map(this::convertToUserSearchResponse);
     }
 

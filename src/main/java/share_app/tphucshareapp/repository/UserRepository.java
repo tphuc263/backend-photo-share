@@ -11,21 +11,17 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     boolean existsByEmail(String email);
 
-    // Text search simplified - fallback to regex if text index not available
+    @Query("{ 'username': { $regex: ?0, $options: 'i' } }")
+    Page<User> findByUsernameContaining(String username, Pageable pageable);
+
     @Query("{ $or: [ " +
             "{ 'username': { $regex: ?0, $options: 'i' } }, " +
             "{ 'firstName': { $regex: ?0, $options: 'i' } }, " +
-            "{ 'lastName': { $regex: ?0, $options: 'i' } }, " +
-            "{ 'bio': { $regex: ?0, $options: 'i' } } " +
-            "] }")
-    Page<User> findByTextSearch(String searchText, Pageable pageable);
-
-    // Combined name search
-    @Query("{ $or: [ " +
-            "{ 'firstName': { $regex: ?0, $options: 'i' } }, " +
-            "{ 'lastName': { $regex: ?0, $options: 'i' } }, " +
-            "{ 'username': { $regex: ?0, $options: 'i' } } " +
+            "{ 'lastName': { $regex: ?0, $options: 'i' } } " +
             "] }")
     Page<User> findByNameFields(String searchTerm, Pageable pageable);
+
+    @Query("{ 'bio': { $regex: ?0, $options: 'i' } }")
+    Page<User> findByBioContaining(String bio, Pageable pageable);
 }
 
