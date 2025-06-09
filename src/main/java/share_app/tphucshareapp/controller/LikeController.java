@@ -15,11 +15,18 @@ import java.util.List;
 public class LikeController {
     private final LikeService likeService;
 
-    // Toggle like/unlike a photo
-    @PostMapping("/photo/{photoId}")
-    public ResponseEntity<ApiResponse<Void>> toggleLike(@PathVariable String photoId) {
-        likeService.toggleLike(photoId);
-        return ResponseEntity.ok(ApiResponse.success(null, "Like toggled successfully"));
+    // like a photo
+    @PostMapping("/like/photo/{photoId}")
+    public ResponseEntity<ApiResponse<Void>> like(@PathVariable String photoId) {
+        likeService.like(photoId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Like successfully"));
+    }
+
+    // like a photo
+    @PostMapping("/unlike/photo/{photoId}")
+    public ResponseEntity<ApiResponse<Void>> unlike(@PathVariable String photoId) {
+        likeService.unlike(photoId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Unlike successfully"));
     }
 
     // Get all likes for a photo

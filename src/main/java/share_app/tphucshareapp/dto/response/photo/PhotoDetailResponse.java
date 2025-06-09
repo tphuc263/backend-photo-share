@@ -13,7 +13,7 @@ public class PhotoDetailResponse {
     private String userId;
     private String username;
     private String userImageUrl;
-    private String imageURL;
+    private String imageUrl;
     private String caption;
     private Instant createdAt;
     private int likesCount;

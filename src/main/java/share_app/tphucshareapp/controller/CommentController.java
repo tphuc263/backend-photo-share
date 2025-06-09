@@ -53,10 +53,10 @@ public class CommentController {
 
     // Get comments count for a photo
     @GetMapping("/photo/{photoId}/count")
-        public ResponseEntity<ApiResponse<Long>> getPhotoCommentsCount(@PathVariable String photoId) {
-            long count = commentService.getPhotoCommentsCount(photoId);
-            return ResponseEntity.ok(ApiResponse.success(count, "Photo comments count retrieved successfully"));
-        }
+    public ResponseEntity<ApiResponse<Long>> getPhotoCommentsCount(@PathVariable String photoId) {
+        long count = commentService.getPhotoCommentsCount(photoId);
+        return ResponseEntity.ok(ApiResponse.success(count, "Photo comments count retrieved successfully"));
+    }
 
     // Get a specific comment
     @GetMapping("/{commentId}")

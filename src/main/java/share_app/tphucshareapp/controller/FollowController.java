@@ -16,10 +16,17 @@ import java.util.List;
 public class FollowController {
     private final FollowService followService;
 
-    // Toggle follow/unfollow a user
-    @PostMapping("/{targetUserId}")
-    public ResponseEntity<ApiResponse<Void>> toggleFollow(@PathVariable String targetUserId) {
-        followService.toggleFollow(targetUserId);
+    // Follow
+    @PostMapping("/follow/{targetUserId}")
+    public ResponseEntity<ApiResponse<Void>> follow(@PathVariable String targetUserId) {
+        followService.follow(targetUserId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Follow status toggled successfully"));
+    }
+
+    // unfollow
+    @PostMapping("/unfollow/{targetUserId}")
+    public ResponseEntity<ApiResponse<Void>> unfollow(@PathVariable String targetUserId) {
+        followService.unfollow(targetUserId);
         return ResponseEntity.ok(ApiResponse.success(null, "Follow status toggled successfully"));
     }
 

@@ -11,11 +11,11 @@ public class PhotoResponse {
     private String userId;
     private String username;
     private String userImageUrl;
-    private String imageURL;
+    private String imageUrl;
     private String caption;
     private Instant createdAt;
-    private int likesCount;
-    private int commentsCount;
+    private int likeCount;
+    private int commentCount;
     private boolean isLikedByCurrentUser;
     private List<String> tags;
 }

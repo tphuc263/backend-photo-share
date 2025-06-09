@@ -2,7 +2,10 @@ package share_app.tphucshareapp.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import share_app.tphucshareapp.dto.response.ApiResponse;
 import share_app.tphucshareapp.model.Tag;
 import share_app.tphucshareapp.service.tag.TagService;
@@ -28,13 +31,5 @@ public class TagController {
             @RequestParam String query) {
         List<Tag> tags = tagService.searchTags(query);
         return ResponseEntity.ok(ApiResponse.success(tags, "Tags search completed"));
-    }
-
-    // Get tags for a specific photo
-    @GetMapping("/photo/{photoId}")
-    public ResponseEntity<ApiResponse<List<Tag>>> getPhotoTags(
-            @PathVariable String photoId) {
-        List<Tag> tags = tagService.getPhotoTags(photoId);
-        return ResponseEntity.ok(ApiResponse.success(tags, "Photo tags retrieved successfully"));
     }
 }

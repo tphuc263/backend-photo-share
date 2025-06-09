@@ -2,14 +2,14 @@ package share_app.tphucshareapp.dto.response.user;
 
 import lombok.Data;
 
+import java.util.HashMap;
+
 @Data
 public class UserProfileResponse {
     private String id;
     private String username;
-    private String email;
     private String imageUrl;
-    private String firstName;
-    private String lastName;
+    private HashMap<String, Long> stats;
     private String bio;
-    private String role;
+    private boolean isFollowingByCurrentUser;
 }

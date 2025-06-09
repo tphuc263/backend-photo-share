@@ -8,16 +8,19 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 import share_app.tphucshareapp.dto.request.user.UpdateProfileRequest;
 import share_app.tphucshareapp.dto.response.user.UserProfileResponse;
 import share_app.tphucshareapp.model.User;
 import share_app.tphucshareapp.repository.UserRepository;
 import share_app.tphucshareapp.security.userdetails.AppUserDetails;
+import share_app.tphucshareapp.service.follow.FollowService;
 import share_app.tphucshareapp.service.photo.CloudinaryService;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,17 +29,29 @@ public class UserService implements IUserService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
     private final CloudinaryService cloudinaryService;
+    private final FollowService followService;
 
     @Override
-    public UserProfileResponse getUserProfileById(String userId) {
-        User user = findUserById(userId);
-        return modelMapper.map(user, UserProfileResponse.class);
+    public UserProfileResponse getUserProfileById(String targetUserId) {
+        User currentUser = getCurrentUser();
+        User targetUser = findUserById(targetUserId);
+        UserProfileResponse response = modelMapper.map(targetUser, UserProfileResponse.class);
+        if (followService.isFollowing(currentUser.getId(), targetUserId)) {
+            response.setFollowingByCurrentUser(true);
+        }
+        return response;
     }
 
     @Override
     public UserProfileResponse getCurrentUserProfile() {
         User user = getCurrentUser();
-        return modelMapper.map(user, UserProfileResponse.class);
+        UserProfileResponse response = modelMapper.map(user, UserProfileResponse.class);
+        HashMap<String, Long> stats = new HashMap<>();
+        stats.put("posts", user.getPhotoCount());
+        stats.put("followers", user.getFollowerCount());
+        stats.put("following", user.getFollowingCount());
+        response.setStats(stats);
+        return response;
     }
 
     @Override
@@ -57,7 +72,7 @@ public class UserService implements IUserService {
                     }
                 }
 
-                // Upload new image
+                // Upload new imag
                 Map<String, Object> uploadResult = cloudinaryService.uploadImage(request.getImage());
                 String newImageUrl = (String) uploadResult.get("secure_url");
                 user.setImageUrl(newImageUrl);
@@ -101,7 +116,7 @@ public class UserService implements IUserService {
                 authentication.getPrincipal() instanceof AppUserDetails;
     }
 
-    private User findUserById(String userId) {
+    public User findUserById(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> {
                     log.error("User not found with ID: {}", userId);
@@ -110,12 +125,6 @@ public class UserService implements IUserService {
     }
 
     private void updateUserFields(User user, UpdateProfileRequest request) {
-        if (request.getFirstName() != null) {
-            user.setFirstName(request.getFirstName());
-        }
-        if (request.getLastName() != null) {
-            user.setLastName(request.getLastName());
-        }
         if (request.getBio() != null) {
             user.setBio(request.getBio());
         }
@@ -123,10 +132,14 @@ public class UserService implements IUserService {
 
     private UserProfileResponse mapToUserProfileResponse(User user) {
         UserProfileResponse response = modelMapper.map(user, UserProfileResponse.class);
-        // Set role as string
-        if (user.getRole() != null) {
-            response.setRole(user.getRole().name());
-        }
         return response;
+    }
+
+    public Map<String, User> findUsersByIds(List<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
     }
 }

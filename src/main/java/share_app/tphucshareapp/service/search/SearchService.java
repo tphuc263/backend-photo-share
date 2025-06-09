@@ -7,7 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import share_app.tphucshareapp.dto.request.search.SearchRequest;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
@@ -15,10 +14,11 @@ import share_app.tphucshareapp.dto.response.search.SearchResultResponse;
 import share_app.tphucshareapp.dto.response.search.UserSearchResponse;
 import share_app.tphucshareapp.dto.response.user.UserProfileResponse;
 import share_app.tphucshareapp.model.Photo;
-import share_app.tphucshareapp.model.PhotoTag;
 import share_app.tphucshareapp.model.Tag;
 import share_app.tphucshareapp.model.User;
-import share_app.tphucshareapp.repository.*;
+import share_app.tphucshareapp.repository.PhotoRepository;
+import share_app.tphucshareapp.repository.TagRepository;
+import share_app.tphucshareapp.repository.UserRepository;
 import share_app.tphucshareapp.service.follow.FollowService;
 import share_app.tphucshareapp.service.photo.PhotoConversionService;
 import share_app.tphucshareapp.service.user.UserService;
@@ -34,9 +34,6 @@ public class SearchService implements ISearchService {
     private final UserRepository userRepository;
     private final PhotoRepository photoRepository;
     private final TagRepository tagRepository;
-    private final PhotoTagRepository photoTagRepository;
-    private final FollowRepository followRepository;
-    private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
     private final PhotoConversionService photoConversionService;
     private final UserService userService;
@@ -85,10 +82,8 @@ public class SearchService implements ISearchService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        // Sử dụng method đã có trong repository
         Page<User> users = userRepository.findByUsernameContainingIgnoreCase(sanitizedQuery, pageable);
 
-        // Nếu không tìm thấy, thử search theo name fields
         if (users.isEmpty() && sanitizedQuery.length() > 2) {
             users = userRepository.findByNameFields(sanitizedQuery, pageable);
         }
@@ -108,10 +103,20 @@ public class SearchService implements ISearchService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
         // Try text search first
+        User currentUser = null;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (Exception e) {
+            log.trace("No authenticated user found for photo search.");
+        }
+        final User finalCurrentUser = currentUser;
+
+        // Try text search first
         try {
             Page<Photo> photos = photoRepository.findByTextSearch(sanitizedQuery, pageable);
             if (!photos.isEmpty()) {
-                return photos.map(photoConversionService::convertToPhotoResponse);
+                // FIX: Pass the current user to the conversion method.
+                return photos.map(photo -> photoConversionService.convertToPhotoResponse(photo, finalCurrentUser));
             }
         } catch (Exception e) {
             log.warn("Photo text search failed, falling back to regex search: {}", e.getMessage());
@@ -119,7 +124,7 @@ public class SearchService implements ISearchService {
 
         // Fallback to caption search
         Page<Photo> photos = photoRepository.findByCaptionContainingIgnoreCase(sanitizedQuery, pageable);
-        return photos.map(photoConversionService::convertToPhotoResponse);
+        return photos.map(photo -> photoConversionService.convertToPhotoResponse(photo, finalCurrentUser));
     }
 
     @Override
@@ -131,32 +136,28 @@ public class SearchService implements ISearchService {
             return Page.empty();
         }
 
-        // Find matching tags
-        List<Tag> matchingTags = tagRepository.findByNameContainingIgnoreCase(sanitizedQuery);
-        if (matchingTags.isEmpty()) {
+        // 1. Find tags that match the query
+        // Assuming the query is a space-separated string of tags, e.g., "nature sky"
+        List<String> tagNames = List.of(sanitizedQuery.split("\\s+"));
+
+        if (tagNames.isEmpty()) {
             return Page.empty();
         }
 
-        // Get tag IDs
-        List<String> tagIds = matchingTags.stream()
-                .map(Tag::getId)
-                .toList();
+        // 2. Find Photos that contain these tags directly
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        // Find photos with these tags
-        List<PhotoTag> photoTags = photoTagRepository.findByTagIdIn(tagIds);
-        List<String> photoIds = photoTags.stream()
-                .map(PhotoTag::getPhotoId)
-                .distinct()
-                .toList();
-
-        if (photoIds.isEmpty()) {
-            return Page.empty();
+        User currentUser = null;
+        try {
+            currentUser = userService.getCurrentUser();
+        } catch (Exception e) {
+            log.trace("No authenticated user found for photo search by tags.");
         }
+        final User finalCurrentUser = currentUser;
 
-        // Get photos and convert to response
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Photo> photos = photoRepository.findByPhotoIds(photoIds, pageable);
-        return photos.map(photoConversionService::convertToPhotoResponse);
+        Page<Photo> photos = photoRepository.findByTagsIn(tagNames, pageable);
+
+        return photos.map(photo -> photoConversionService.convertToPhotoResponse(photo, finalCurrentUser));
     }
 
     @Override
@@ -191,8 +192,6 @@ public class SearchService implements ISearchService {
                     PageRequest.of(0, limit / 3)).getContent();
             users.forEach(user -> {
                 suggestions.add(user.getUsername());
-                if (user.getFirstName() != null) suggestions.add(user.getFirstName());
-                if (user.getLastName() != null) suggestions.add(user.getLastName());
             });
         } catch (Exception e) {
             log.warn("Error getting user suggestions: {}", e.getMessage());
@@ -228,7 +227,7 @@ public class SearchService implements ISearchService {
         UserSearchResponse response = modelMapper.map(user, UserSearchResponse.class);
 
         // Add follower count
-        response.setFollowersCount(followService.getFollowersCount(user.getId()));
+        response.setFollowersCount(user.getFollowerCount());
 
         // Check if current user follows this user
         try {

@@ -20,7 +20,7 @@ public class CloudinaryService implements ICloudinaryService {
     private final Cloudinary cloudinary;
 
     @Override
-    public Map<String, Object> uploadImage(MultipartFile file){
+    public Map<String, Object> uploadImage(MultipartFile file) {
         validateFile(file);
 
         log.info("Starting image upload - filename: {}, size: {} bytes",

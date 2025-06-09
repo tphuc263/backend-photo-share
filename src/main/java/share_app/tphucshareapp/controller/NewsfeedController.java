@@ -62,5 +62,4 @@ public class NewsfeedController {
                 ApiResponse.success(newsfeed, "Real-time newsfeed retrieved successfully")
         );
     }
-
 }

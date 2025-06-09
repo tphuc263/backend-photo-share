@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import share_app.tphucshareapp.dto.request.auth.LoginRequest;
-import share_app.tphucshareapp.dto.response.auth.LoginResponse;
 import share_app.tphucshareapp.dto.request.auth.RegisterRequest;
 import share_app.tphucshareapp.dto.response.ApiResponse;
+import share_app.tphucshareapp.dto.response.auth.LoginResponse;
 import share_app.tphucshareapp.service.auth.AuthService;
 
 @RestController

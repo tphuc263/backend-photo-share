@@ -2,7 +2,6 @@ package share_app.tphucshareapp.service.photo;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -12,7 +11,9 @@ import org.springframework.stereotype.Service;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
 import share_app.tphucshareapp.model.Follow;
 import share_app.tphucshareapp.model.Photo;
-import share_app.tphucshareapp.repository.*;
+import share_app.tphucshareapp.model.User;
+import share_app.tphucshareapp.repository.FollowRepository;
+import share_app.tphucshareapp.repository.PhotoRepository;
 import share_app.tphucshareapp.service.user.UserService;
 
 import java.time.Duration;
@@ -28,11 +29,9 @@ public class NewsfeedService implements INewsfeedService {
 
     private final FollowRepository followRepository;
     private final PhotoRepository photoRepository;
-    private final UserService userService;
-    private final LikeRepository likeRepository;
-    private final CommentRepository commentRepository;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final PhotoConversionService photoConversionService; // Use conversion service instead of PhotoService
+    private final PhotoConversionService photoConversionService;
+    private final UserService userService;
 
     // Cache configuration
     private static final String NEWSFEED_CACHE_KEY = "newsfeed:user:";
@@ -43,6 +42,7 @@ public class NewsfeedService implements INewsfeedService {
     @Override
     public Page<PhotoResponse> getNewsfeed(String userId, int page, int size) {
         log.info("Generating real-time newsfeed for user: {}", userId);
+        User currentUser = userService.findUserById(userId);
 
         // Step 1: Get users that current user follows
         List<String> followingIds = getFollowingUserIds(userId);
@@ -55,15 +55,16 @@ public class NewsfeedService implements INewsfeedService {
         List<Photo> candidatePhotos = fetchRecentPhotosFromFollowing(followingIds);
 
         // Step 3: Apply ranking algorithm
-        List<Photo> rankedPhotos = rankPhotos(candidatePhotos, userId);
+        List<Photo> rankedPhotos = rankPhotos(candidatePhotos);
 
         // Step 4: Convert to response and paginate
-        return paginateAndConvert(rankedPhotos, page, size);
+        return paginateAndConvert(rankedPhotos, currentUser, PageRequest.of(page, size));
     }
 
     @Override
     public Page<PhotoResponse> getCachedNewsfeed(String userId, int page, int size) {
         log.info("Retrieving cached newsfeed for user: {}", userId);
+        User currentUser = userService.findUserById(userId);
 
         String cacheKey = NEWSFEED_CACHE_KEY + userId;
 
@@ -94,8 +95,9 @@ public class NewsfeedService implements INewsfeedService {
 
             // Fetch photos and convert to response
             List<Photo> photos = photoRepository.findAllById(pagePhotoIds);
+
             List<PhotoResponse> photoResponses = photos.stream()
-                    .map(photoConversionService::convertToPhotoResponse) // Use conversion service
+                    .map(photo -> photoConversionService.convertToPhotoResponse(photo, currentUser))
                     .toList();
 
             // Maintain order from cache
@@ -123,7 +125,7 @@ public class NewsfeedService implements INewsfeedService {
             }
 
             List<Photo> candidatePhotos = fetchRecentPhotosFromFollowing(followingIds);
-            List<Photo> rankedPhotos = rankPhotos(candidatePhotos, userId);
+            List<Photo> rankedPhotos = rankPhotos(candidatePhotos);
 
             // Limit cache size for performance
             List<String> photoIds = rankedPhotos.stream()
@@ -215,34 +217,19 @@ public class NewsfeedService implements INewsfeedService {
     }
 
     private List<Photo> fetchRecentPhotosFromFollowing(List<String> followingIds) {
-        // get photos from last RELEVANCE_WINDOW_DAYS days
         Instant cutoffTime = Instant.now().minus(Duration.ofDays(RELEVANCE_WINDOW_DAYS));
-
-        List<Photo> recentPhotos = new ArrayList<>();
-        for (String id : followingIds) {
-            List<Photo> userPhotos = photoRepository.findByUserIdOrderByCreatedAtDesc(id);
-
-            // filter by time window
-            List<Photo> recentUserPhotos = userPhotos.stream()
-                    .filter(photo -> photo.getCreatedAt().isAfter(cutoffTime))
-                    .limit(10)
-                    .toList();
-            recentPhotos.addAll(recentUserPhotos);
-        }
-        return recentPhotos;
+        return photoRepository.findByUser_UserIdInAndCreatedAtAfterOrderByCreatedAtDesc(followingIds, cutoffTime);
     }
 
-    private List<Photo> rankPhotos(List<Photo> photos, String userId) {
-        log.info("Ranking {} photos for user: {}", photos.size(), userId);
-
+    private List<Photo> rankPhotos(List<Photo> photos) {
         return photos.stream()
-                .map(photo -> new PhotoWithScore(photo, calculateRelevantScore(photo, userId)))
+                .map(photo -> new PhotoWithScore(photo, calculateRelevantScore(photo)))
                 .sorted((a, b) -> Double.compare(b.score, a.score))
-                .map(PhotoWithScore -> PhotoWithScore.photo)
+                .map(photoWithScore -> photoWithScore.photo)
                 .toList();
     }
 
-    private double calculateRelevantScore(Photo photo, String userId) {
+    private double calculateRelevantScore(Photo photo) {
         double score = 0.0;
 
         // calculate time duration from posted to now
@@ -250,9 +237,9 @@ public class NewsfeedService implements INewsfeedService {
         // score range (0, 100), minus 2 each hour
         score += Math.max(0, 100 - hoursOld * 2);
         // add 2 score for each 10 likes
-        score += likeRepository.countByPhotoId(photo.getId());
+        score += photo.getLikeCount();
         // add 2 score for each 5 comment
-        score += commentRepository.countByPhotoId(photo.getId());
+        score += photo.getCommentCount() * 2;
 
         // quality photo signals
         if (photo.getCaption() != null && !photo.getCaption().trim().isEmpty()) {
@@ -262,21 +249,20 @@ public class NewsfeedService implements INewsfeedService {
         return score;
     }
 
-    private Page<PhotoResponse> paginateAndConvert(List<Photo> photos, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    private Page<PhotoResponse> paginateAndConvert(List<Photo> photos, User currentUser, Pageable pageable) {
         int start = (int) pageable.getOffset();
-        int end = Math.min(start + size, photos.size());
+        int end = Math.min(start + (int) pageable.getOffset() + pageable.getPageSize(), photos.size());
 
-        // if start behind of photos => empty
         if (start >= photos.size()) {
             return Page.empty();
         }
 
-        // create list(sub, page), each page contain size records
         List<Photo> pagePhotos = photos.subList(start, end);
+
         List<PhotoResponse> photoResponses = pagePhotos.stream()
-                .map(photoConversionService::convertToPhotoResponse) // Use conversion service
+                .map(photo -> photoConversionService.convertToPhotoResponse(photo, currentUser))
                 .toList();
+
         return new PageImpl<>(photoResponses, pageable, photos.size());
     }
 

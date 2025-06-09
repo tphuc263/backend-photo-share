@@ -3,6 +3,10 @@ package share_app.tphucshareapp.service.comment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import share_app.tphucshareapp.dto.request.comment.CreateCommentRequest;
 import share_app.tphucshareapp.dto.request.comment.UpdateCommentRequest;
@@ -17,8 +21,6 @@ import share_app.tphucshareapp.service.user.UserService;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,15 +30,20 @@ public class CommentService implements ICommentService {
     private final PhotoRepository photoRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
 
     @Override
     public CommentResponse createComment(String photoId, CreateCommentRequest request) {
         // Validate photo exists
-        Photo photo = photoRepository.findById(photoId)
+        photoRepository.findById(photoId)
                 .orElseThrow(() -> new RuntimeException("Photo not found with ID: " + photoId));
 
         User currentUser = userService.getCurrentUser();
+
+        Comment.EmbeddedUser embeddedUser = new Comment.EmbeddedUser();
+        embeddedUser.setUsername(currentUser.getUsername());
+        embeddedUser.setUserImageUrl(currentUser.getImageUrl());
 
         // Create comment
         Comment comment = new Comment();
@@ -44,11 +51,16 @@ public class CommentService implements ICommentService {
         comment.setUserId(currentUser.getId());
         comment.setText(request.getText());
         comment.setCreatedAt(Instant.now());
+        comment.setUser(embeddedUser);
 
         Comment savedComment = commentRepository.save(comment);
+
+        Query query = new Query(Criteria.where("_id").is(photoId));
+        Update update = new Update().inc("commentCount", 1);
+        mongoTemplate.updateFirst(query, update, Photo.class);
         log.info("Comment created successfully by user {} on photo {}", currentUser.getId(), photoId);
 
-        return convertToCommentResponse(savedComment, currentUser);
+        return convertToCommentResponse(savedComment);
     }
 
     @Override
@@ -67,7 +79,7 @@ public class CommentService implements ICommentService {
         Comment updatedComment = commentRepository.save(comment);
         log.info("Comment {} updated successfully by user {}", commentId, currentUser.getId());
 
-        return convertToCommentResponse(updatedComment, currentUser);
+        return convertToCommentResponse(updatedComment);
     }
 
     @Override
@@ -83,6 +95,9 @@ public class CommentService implements ICommentService {
         }
 
         commentRepository.delete(comment);
+        Query query = new Query(Criteria.where("_id").is(comment.getPhotoId()));
+        Update update = new Update().inc("commentCount", -1);
+        mongoTemplate.updateFirst(query, update, Photo.class);
         log.info("Comment {} deleted successfully by user {}", commentId, currentUser.getId());
     }
 
@@ -109,38 +124,22 @@ public class CommentService implements ICommentService {
         User user = userRepository.findById(comment.getUserId())
                 .orElseThrow(() -> new RuntimeException("Comment owner not found"));
 
-        return convertToCommentResponse(comment, user);
+        return convertToCommentResponse(comment);
     }
 
     // Helper methods
-    private CommentResponse convertToCommentResponse(Comment comment, User user) {
+    private CommentResponse convertToCommentResponse(Comment comment) {
         CommentResponse response = modelMapper.map(comment, CommentResponse.class);
-        response.setUsername(user.getUsername());
-        response.setUserImageUrl(user.getImageUrl());
+        if (comment.getUser() != null) {
+            response.setUsername(comment.getUser().getUsername());
+            response.setUserImageUrl(comment.getUser().getUserImageUrl());
+        }
         return response;
     }
 
     private List<CommentResponse> convertToCommentResponses(List<Comment> comments) {
-        // Get all user IDs and fetch users in batch for performance
-        List<String> userIds = comments.stream()
-                .map(Comment::getUserId)
-                .distinct()
-                .toList();
-
-        Map<String, User> usersMap = userRepository.findAllById(userIds)
-                .stream()
-                .collect(Collectors.toMap(User::getId, user -> user));
-
         return comments.stream()
-                .map(comment -> {
-                    CommentResponse response = modelMapper.map(comment, CommentResponse.class);
-                    User user = usersMap.get(comment.getUserId());
-                    if (user != null) {
-                        response.setUsername(user.getUsername());
-                        response.setUserImageUrl(user.getImageUrl());
-                    }
-                    return response;
-                })
+                .map(this::convertToCommentResponse)
                 .toList();
     }
 }

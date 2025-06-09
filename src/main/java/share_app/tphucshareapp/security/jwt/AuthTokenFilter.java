@@ -32,16 +32,8 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             String jwt = parseJwt(request);
 
-            if (log.isDebugEnabled()) {
-                log.debug("Processing request: {} {} with Content-Type: {}",
-                        request.getMethod(), request.getRequestURI(), request.getContentType());
-                log.debug("JWT token present: {}", jwt != null);
-            }
-
             if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
                 authenticateUser(jwt);
-            } else if (log.isDebugEnabled()) {
-                log.debug("JWT token invalid or not present, authentication will be anonymous");
             }
         } catch (Exception e) {
             log.error("Cannot set user authentication for request: {} {}",
@@ -59,10 +51,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             var authentication = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            if (log.isDebugEnabled()) {
-                log.debug("Authentication set successfully for user: {}", username);
-            }
         } catch (Exception e) {
             log.error("Failed to authenticate user from JWT token", e);
             throw e;

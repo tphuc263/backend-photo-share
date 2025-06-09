@@ -6,6 +6,12 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import share_app.tphucshareapp.dto.response.follow.FollowResponse;
 import share_app.tphucshareapp.dto.response.follow.FollowStatsResponse;
@@ -13,11 +19,14 @@ import share_app.tphucshareapp.model.Follow;
 import share_app.tphucshareapp.model.User;
 import share_app.tphucshareapp.repository.FollowRepository;
 import share_app.tphucshareapp.repository.UserRepository;
+import share_app.tphucshareapp.security.userdetails.AppUserDetails;
 import share_app.tphucshareapp.service.photo.NewsfeedService;
-import share_app.tphucshareapp.service.user.UserService;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,56 +35,74 @@ import java.util.stream.Collectors;
 public class FollowService implements IFollowService {
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
-    private final UserService userService;
     private final ModelMapper modelMapper;
-    private final NewsfeedService newsfeedService;
+    private final MongoTemplate mongoTemplate;
 
     @Override
-    public void toggleFollow(String targetUserId) {
-        // Validate target user exists
-        userRepository.findById(targetUserId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + targetUserId));
+    public void follow(String targetUserId) {
+        User currentUser = getCurrentUser();
+        Follow existingFollow = checkBeforeFollow(targetUserId, currentUser);
 
-        User currentUser = userService.getCurrentUser();
-
-        // Prevent self-following
-        if (currentUser.getId().equals(targetUserId)) {
-            throw new RuntimeException("You cannot follow yourself");
+        if (existingFollow != null) {
+            throw new RuntimeException("You are already following this user");
         }
 
-        Optional<Follow> existingFollow = followRepository.findByFollowerIdAndFollowingId(
-                currentUser.getId(), targetUserId);
+        Follow follow = new Follow();
+        follow.setFollowerId(currentUser.getId());
+        follow.setFollowingId(targetUserId);
+        follow.setCreatedAt(Instant.now());
 
-        if (existingFollow.isPresent()) {
-            // Unfollow: remove existing follow relationship
-            followRepository.delete(existingFollow.get());
-            log.info("User {} unfollowed user {}", currentUser.getId(), targetUserId);
+        followRepository.save(follow);
+        log.info("User {} followed user {}", currentUser.getId(), targetUserId);
 
-            try {
-                newsfeedService.generateNewsfeedCache(currentUser.getId());
-                log.info("Regenerated newsfeed cache after unfollow for user: {}", currentUser.getId());
-            } catch (Exception e) {
-                log.error("Error regenerating newsfeed cache after unfollow", e);
-            }
+        // increase following count of person click follow
+        Query followerQuery = new Query(Criteria.where("_id").is(currentUser.getId()));
+        Update followerUpdate = new Update().inc("followingCount", 1).push("followingIds", targetUserId);
+        mongoTemplate.updateFirst(followerQuery, followerUpdate, User.class);
 
-        } else {
-            // Follow: create new follow relationship
-            Follow follow = new Follow();
-            follow.setFollowerId(currentUser.getId());
-            follow.setFollowingId(targetUserId);
-            follow.setCreatedAt(Instant.now());
+        // increase follower of person who have new follower
+        Query followingQuery = new Query(Criteria.where("_id").is(targetUserId));
+        Update followingUpdate = new Update().inc("followerCount", 1);
+        mongoTemplate.updateFirst(followingQuery, followingUpdate, User.class);
 
-            followRepository.save(follow);
-            log.info("User {} followed user {}", currentUser.getId(), targetUserId);
+        log.info("User {} followed user {}", currentUser.getId(), targetUserId);
 
-            try {
-                newsfeedService.generateNewsfeedCache(currentUser.getId());
-                log.info("Regenerated newsfeed cache after follow for user: {}", currentUser.getId());
-            } catch (Exception e) {
-                log.error("Error regenerating newsfeed cache after follow", e);
-            }
-        }
+//        try {
+//            newsfeedService.generateNewsfeedCache(currentUser.getId());
+//            log.info("Regenerated newsfeed cache after follow for user: {}", currentUser.getId());
+//        } catch (Exception e) {
+//            log.error("Error regenerating newsfeed cache after follow", e);
+//        }
     }
+
+    @Override
+    public void unfollow(String targetUserId) {
+        User currentUser = getCurrentUser();
+        Follow existingFollow = checkBeforeFollow(targetUserId, currentUser);
+
+        if (existingFollow == null) {
+            throw new RuntimeException("You are not following this user");
+        }
+
+        followRepository.delete(existingFollow);
+        log.info("User {} unfollowed user {}", currentUser.getId(), targetUserId);
+
+        Query followerQuery = new Query(Criteria.where("_id").is(currentUser.getId()));
+        Update followerUpdate = new Update().inc("followingCount", -1).pull("followingIds", targetUserId);
+        mongoTemplate.updateFirst(followerQuery, followerUpdate, User.class);
+
+        Query followingQuery = new Query(Criteria.where("_id").is(targetUserId));
+        Update followingUpdate = new Update().inc("followerCount", -1);
+        mongoTemplate.updateFirst(followingQuery, followingUpdate, User.class);
+
+//        try {
+//            newsfeedService.generateNewsfeedCache(currentUser.getId());
+//            log.info("Regenerated newsfeed cache after unfollow for user: {}", currentUser.getId());
+//        } catch (Exception e) {
+//            log.error("Error regenerating newsfeed cache after unfollow", e);
+//        }
+    }
+
 
     @Override
     public List<FollowResponse> getFollowers(String userId, int page, int size) {
@@ -112,19 +139,16 @@ public class FollowService implements IFollowService {
     @Override
     public FollowStatsResponse getFollowStats(String userId) {
         // Validate user exists
-        userRepository.findById(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
 
-        long followersCount = followRepository.countByFollowingId(userId);
-        long followingCount = followRepository.countByFollowerId(userId);
-
         FollowStatsResponse stats = new FollowStatsResponse();
-        stats.setFollowersCount(followersCount);
-        stats.setFollowingCount(followingCount);
+        stats.setFollowersCount(user.getFollowerCount());
+        stats.setFollowingCount(user.getFollowingCount());
 
         // Check if current user follows this user
         try {
-            User currentUser = userService.getCurrentUser();
+            User currentUser = getCurrentUser();
             boolean isFollowed = followRepository.existsByFollowerIdAndFollowingId(
                     currentUser.getId(), userId);
             stats.setFollowedByCurrentUser(isFollowed);
@@ -143,12 +167,12 @@ public class FollowService implements IFollowService {
 
     @Override
     public long getFollowersCount(String userId) {
-        return followRepository.countByFollowingId(userId);
+        return userRepository.findById(userId).map(User::getFollowerCount).orElse(0L);
     }
 
     @Override
     public long getFollowingCount(String userId) {
-        return followRepository.countByFollowerId(userId);
+        return userRepository.findById(userId).map(User::getFollowingCount).orElse(0L);
     }
 
     // Helper methods
@@ -182,7 +206,7 @@ public class FollowService implements IFollowService {
 
     private Set<String> getCurrentUserFollowing() {
         try {
-            User currentUser = userService.getCurrentUser();
+            User currentUser = getCurrentUser();
             return followRepository.findByFollowerId(currentUser.getId())
                     .stream()
                     .map(Follow::getFollowingId)
@@ -191,5 +215,32 @@ public class FollowService implements IFollowService {
             // User not authenticated
             return Set.of();
         }
+    }
+
+    private Follow checkBeforeFollow(String targetUserId, User currentUser) {
+        userRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + targetUserId));
+
+        // Prevent self-following
+        if (currentUser.getId().equals(targetUserId)) {
+            throw new RuntimeException("You cannot follow yourself");
+        }
+
+        return followRepository.findByFollowerIdAndFollowingId(
+                currentUser.getId(), targetUserId).orElse(null);
+    }
+
+    // helper methods
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof AppUserDetails userDetails)) {
+            throw new RuntimeException("User not authenticated properly");
+        }
+        return userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> {
+                    log.error("User not found with ID: {}", userDetails.getId());
+                    return new RuntimeException("User not found with ID: " + userDetails.getId());
+                });
     }
 }

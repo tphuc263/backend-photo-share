@@ -1,29 +1,40 @@
 package share_app.tphucshareapp.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
-import org.springframework.data.mongodb.core.index.CompoundIndexes;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.index.TextIndexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.List;
+import org.bson.types.ObjectId;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Document(collection = "photos")
 public class Photo {
 
     @Id
     private String id;
-
-    @Indexed
-    private String userId;
-
-    private String imageURL;
-
-    @TextIndexed(weight = 2)
+    private String imageUrl;
     private String caption;
-
     private Instant createdAt;
+
+    private List<String> tags;
+
+    private EmbeddedUser user;
+
+    private long likeCount;
+    private long commentCount;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EmbeddedUser {
+        private String userId;
+        private String username;
+        private String userImageUrl;
+    }
 }

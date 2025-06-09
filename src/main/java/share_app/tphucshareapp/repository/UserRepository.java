@@ -18,13 +18,7 @@ public interface UserRepository extends MongoRepository<User, String> {
             "] }")
     Page<User> findByNameFields(String searchTerm, Pageable pageable);
 
-    @Query("{ 'bio': { $regex: ?0, $options: 'i' } }")
-    Page<User> findByBioContaining(String bio, Pageable pageable);
 
     Page<User> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
-
-    // Và sửa method này:
-    @Query("{ 'username': { $regex: ?0, $options: 'i' } }")
-    Page<User> findByUsernameContaining(String username, Pageable pageable);
 }
 

@@ -24,7 +24,7 @@ public class NewsfeedCacheScheduler {
      * Pre-generate newsfeed cache for active users every 2 hours
      * This runs during off-peak hours to reduce load
      */
-    @Scheduled(fixedRate = 7200000, initialDelay = 300000) // 2 hours interval, 5 min initial delay
+//    @Scheduled(fixedRate = 7200000, initialDelay = 300000) // 2 hours interval, 5 min initial delay
     public void preGenerateActiveUserFeeds() {
         log.info("Starting scheduled newsfeed cache generation for active users");
 
@@ -55,7 +55,7 @@ public class NewsfeedCacheScheduler {
     /**
      * Clean up stale cache entries daily
      */
-    @Scheduled(cron = "0 2 0 * * ?") // Every day at 2 AM
+//    @Scheduled(cron = "0 2 0 * * ?") // Every day at 2 AM
     public void cleanupStaleCache() {
         log.info("Starting scheduled cache cleanup");
 
