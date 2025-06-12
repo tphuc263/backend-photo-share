@@ -165,16 +165,6 @@ public class FollowService implements IFollowService {
         return followRepository.existsByFollowerIdAndFollowingId(followerId, followingId);
     }
 
-    @Override
-    public long getFollowersCount(String userId) {
-        return userRepository.findById(userId).map(User::getFollowerCount).orElse(0L);
-    }
-
-    @Override
-    public long getFollowingCount(String userId) {
-        return userRepository.findById(userId).map(User::getFollowingCount).orElse(0L);
-    }
-
     // Helper methods
     private List<FollowResponse> convertToFollowResponses(List<String> userIds, boolean isFollowersList) {
         if (userIds.isEmpty()) {

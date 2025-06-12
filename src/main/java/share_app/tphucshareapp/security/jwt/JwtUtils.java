@@ -30,7 +30,6 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-
     public String generateAccessToken(Authentication authentication) {
         AppUserDetails userPrincipal = (AppUserDetails) authentication.getPrincipal();
 

@@ -90,11 +90,6 @@ public class LikeService implements ILikeService {
                 .orElse(0L);
     }
 
-    @Override
-    public boolean isPhotoLikedByUser(String photoId, String userId) {
-        return likeRepository.existsByPhotoIdAndUserId(photoId, userId);
-    }
-
     // Helper method
     private List<LikeResponse> convertToLikeResponses(List<Like> likes) {
         // Get all user IDs and fetch users in batch for performance

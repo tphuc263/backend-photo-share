@@ -12,6 +12,7 @@ import share_app.tphucshareapp.dto.request.search.SearchRequest;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
 import share_app.tphucshareapp.dto.response.search.SearchResultResponse;
 import share_app.tphucshareapp.dto.response.search.UserSearchResponse;
+import share_app.tphucshareapp.dto.response.search.UserSearchResponseSimple;
 import share_app.tphucshareapp.dto.response.user.UserProfileResponse;
 import share_app.tphucshareapp.model.Photo;
 import share_app.tphucshareapp.model.Tag;
@@ -39,40 +40,40 @@ public class SearchService implements ISearchService {
     private final UserService userService;
     private final FollowService followService;
 
+//    @Override
+//    public SearchResultResponse searchAll(SearchRequest request) {
+//        log.info("Performing comprehensive search for: {}", request.getQuery());
+//
+//        String query = sanitizeSearchQuery(request.getQuery());
+//        if (query.isEmpty()) {
+//            return new SearchResultResponse();
+//        }
+//
+//        SearchResultResponse result = new SearchResultResponse();
+//        result.setQuery(request.getQuery());
+//
+//        // Search users (limit to small number for "all" search)
+//        Page<UserSearchResponse> users = searchUsers(query, 0, 5);
+//        result.setUsers(users.getContent().stream()
+//                .map(this::convertToUserProfileResponse)
+//                .toList());
+//        result.setTotalUsers(users.getTotalElements());
+//
+//        // Search photos
+//        Page<PhotoResponse> photos = searchPhotos(query, 0, 10);
+//        result.setPhotos(photos.getContent());
+//        result.setTotalPhotos(photos.getTotalElements());
+//
+//        // Search tags
+//        List<Tag> tags = searchTags(query, 5);
+//        result.setTags(tags);
+//        result.setTotalTags(tags.size());
+//
+//        return result;
+//    }
+
     @Override
-    public SearchResultResponse searchAll(SearchRequest request) {
-        log.info("Performing comprehensive search for: {}", request.getQuery());
-
-        String query = sanitizeSearchQuery(request.getQuery());
-        if (query.isEmpty()) {
-            return new SearchResultResponse();
-        }
-
-        SearchResultResponse result = new SearchResultResponse();
-        result.setQuery(request.getQuery());
-
-        // Search users (limit to small number for "all" search)
-        Page<UserSearchResponse> users = searchUsers(query, 0, 5);
-        result.setUsers(users.getContent().stream()
-                .map(this::convertToUserProfileResponse)
-                .toList());
-        result.setTotalUsers(users.getTotalElements());
-
-        // Search photos
-        Page<PhotoResponse> photos = searchPhotos(query, 0, 10);
-        result.setPhotos(photos.getContent());
-        result.setTotalPhotos(photos.getTotalElements());
-
-        // Search tags
-        List<Tag> tags = searchTags(query, 5);
-        result.setTags(tags);
-        result.setTotalTags(tags.size());
-
-        return result;
-    }
-
-    @Override
-    public Page<UserSearchResponse> searchUsers(String query, int page, int size) {
+    public Page<UserSearchResponseSimple> searchUsers(String query, int page, int size) {
         log.info("Searching users for: {}", query);
 
         String sanitizedQuery = sanitizeSearchQuery(query);
@@ -82,13 +83,9 @@ public class SearchService implements ISearchService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<User> users = userRepository.findByUsernameContainingIgnoreCase(sanitizedQuery, pageable);
+        Page<User> users = userRepository.findByUsernameRegex(sanitizedQuery, pageable);
 
-        if (users.isEmpty() && sanitizedQuery.length() > 2) {
-            users = userRepository.findByNameFields(sanitizedQuery, pageable);
-        }
-
-        return users.map(this::convertToUserSearchResponse);
+        return users.map(user -> modelMapper.map(user, UserSearchResponseSimple.class));
     }
 
     @Override

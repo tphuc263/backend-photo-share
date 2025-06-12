@@ -12,6 +12,4 @@ public interface ILikeService {
     List<LikeResponse> getPhotoLikes(String photoId);
 
     long getPhotoLikesCount(String photoId);
-
-    boolean isPhotoLikedByUser(String photoId, String userId);
 }

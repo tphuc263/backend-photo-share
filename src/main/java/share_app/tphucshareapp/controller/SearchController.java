@@ -13,6 +13,7 @@ import share_app.tphucshareapp.dto.response.ApiResponse;
 import share_app.tphucshareapp.dto.response.photo.PhotoResponse;
 import share_app.tphucshareapp.dto.response.search.SearchResultResponse;
 import share_app.tphucshareapp.dto.response.search.UserSearchResponse;
+import share_app.tphucshareapp.dto.response.search.UserSearchResponseSimple;
 import share_app.tphucshareapp.model.Tag;
 import share_app.tphucshareapp.service.search.SearchService;
 
@@ -26,32 +27,32 @@ public class SearchController {
 
     private final SearchService searchService;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<SearchResultResponse>> search(
-            @RequestParam("q") String query,
-            @RequestParam(defaultValue = "all") String type,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        SearchRequest request = new SearchRequest();
-        request.setQuery(query);
-        request.setType(type);
-        request.setPage(page);
-        request.setSize(size);
-
-        SearchResultResponse result = searchService.searchAll(request);
-        return ResponseEntity.ok(
-                ApiResponse.success(result, "Search completed successfully")
-        );
-    }
+//    @GetMapping
+//    public ResponseEntity<ApiResponse<SearchResultResponse>> search(
+//            @RequestParam("q") String query,
+//            @RequestParam(defaultValue = "all") String type,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "20") int size) {
+//
+//        SearchRequest request = new SearchRequest();
+//        request.setQuery(query);
+//        request.setType(type);
+//        request.setPage(page);
+//        request.setSize(size);
+//
+//        SearchResultResponse result = searchService.searchAll(request);
+//        return ResponseEntity.ok(
+//                ApiResponse.success(result, "Search completed successfully")
+//        );
+//    }
 
     @GetMapping("/users")
-    public ResponseEntity<ApiResponse<Page<UserSearchResponse>>> searchUsers(
+    public ResponseEntity<ApiResponse<Page<UserSearchResponseSimple>>> searchUsers(
             @RequestParam("q") String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        Page<UserSearchResponse> users = searchService.searchUsers(query, page, size);
+        Page<UserSearchResponseSimple> users = searchService.searchUsers(query, page, size);
         return ResponseEntity.ok(
                 ApiResponse.success(users, "User search completed successfully")
         );

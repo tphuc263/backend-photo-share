@@ -125,14 +125,16 @@ public class UserService implements IUserService {
     }
 
     private void updateUserFields(User user, UpdateProfileRequest request) {
+        if (request.getUsername() != null) {
+            user.setUsername(request.getUsername());
+        }
         if (request.getBio() != null) {
             user.setBio(request.getBio());
         }
     }
 
     private UserProfileResponse mapToUserProfileResponse(User user) {
-        UserProfileResponse response = modelMapper.map(user, UserProfileResponse.class);
-        return response;
+        return modelMapper.map(user, UserProfileResponse.class);
     }
 
     public Map<String, User> findUsersByIds(List<String> userIds) {
